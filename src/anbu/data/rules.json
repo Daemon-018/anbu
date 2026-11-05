@@ -1,0 +1,517 @@
+{
+  "_comment": "Rule pack. Conditions are declarative so detection engineers can tune rules without touching code. Severities follow docs/02-risk-scoring.md.",
+  "rules": [
+    {
+      "id": "PERM-01",
+      "title": "Reads incoming SMS and has internet access",
+      "severity": "high",
+      "category": "sms_interception",
+      "requires": {
+        "all": [
+          { "permission": "android.permission.RECEIVE_SMS" },
+          { "permission_any": ["android.permission.READ_SMS", "android.permission.SEND_SMS"] },
+          { "permission": "android.permission.INTERNET" }
+        ]
+      },
+      "description": "The app can read or send text messages and can reach the network.",
+      "rationale": "One-time passwords arrive by SMS. This combination is the core of OTP theft and premium-SMS fraud, and is rarely needed by apps that are not messaging clients.",
+      "mitre": ["T1412"]
+    },
+    {
+      "id": "PERM-02",
+      "title": "Requests accessibility-service control",
+      "severity": "high",
+      "category": "accessibility_abuse",
+      "requires": { "permission_any": ["android.permission.BIND_ACCESSIBILITY_SERVICE"] },
+      "description": "The app can register a service that reads the screen and acts on the user's behalf.",
+      "rationale": "Accessibility access is the most abused Android permission: it enables keylogging, screen scraping and click automation, including tapping through permission and payment dialogs.",
+      "mitre": ["T1417"]
+    },
+    {
+      "id": "PERM-03",
+      "title": "Accessibility control combined with draw-over-other-apps",
+      "severity": "high",
+      "category": "overlay_attack",
+      "requires": {
+        "all": [
+          { "permission": "android.permission.BIND_ACCESSIBILITY_SERVICE" },
+          { "permission": "android.permission.SYSTEM_ALERT_WINDOW" }
+        ]
+      },
+      "description": "The app can draw windows over other apps and automate the interface.",
+      "rationale": "Overlays plus accessibility is the classic banking-trojan pattern: a fake login screen is drawn while automation reads and submits real credentials.",
+      "mitre": ["T1417"]
+    },
+    {
+      "id": "PERM-04",
+      "title": "Can install other applications",
+      "severity": "medium",
+      "category": "dropper",
+      "requires": { "permission": "android.permission.REQUEST_INSTALL_PACKAGES" },
+      "description": "The app can prompt the user to install additional APKs.",
+      "rationale": "Install requests are how droppers deliver a second-stage payload that was not in the analysed file.",
+      "mitre": ["T1407"]
+    },
+    {
+      "id": "PERM-05",
+      "title": "Requests device-administrator rights",
+      "severity": "high",
+      "category": "device_admin",
+      "requires": { "permission": "android.permission.BIND_DEVICE_ADMIN" },
+      "description": "The app can become a device administrator.",
+      "rationale": "Device admin allows locking the screen, resetting the device and disabling uninstall, which is the basis of Android ransomware.",
+      "mitre": ["T1626"]
+    },
+    {
+      "id": "PERM-06",
+      "title": "Starts itself at boot with a long-running service",
+      "severity": "medium",
+      "category": "persistence",
+      "requires": {
+        "all": [
+          { "permission": "android.permission.RECEIVE_BOOT_COMPLETED" },
+          { "permission_any": ["android.permission.FOREGROUND_SERVICE", "android.permission.FOREGROUND_SERVICE_DATA_SYNC"] }
+        ]
+      },
+      "description": "The app restarts after reboot and can keep a foreground service running.",
+      "rationale": "Persistence across reboots is required by most spyware so collection survives a phone restart.",
+      "mitre": ["T1398"]
+    },
+    {
+      "id": "PERM-07",
+      "title": "Reads contacts or call logs and has internet access",
+      "severity": "high",
+      "category": "data_harvesting",
+      "requires": {
+        "all": [
+          { "permission_any": ["android.permission.READ_CONTACTS", "android.permission.READ_CALL_LOG"] },
+          { "permission": "android.permission.INTERNET" }
+        ]
+      },
+      "description": "Personal contact or call-history data can leave the device.",
+      "rationale": "Bulk harvesting of contacts and call logs is a defining behaviour of spyware and loan-app extortion.",
+      "mitre": ["T1432", "T1433"]
+    },
+    {
+      "id": "PERM-08",
+      "title": "Requests broad storage or package visibility",
+      "severity": "medium",
+      "category": "reconnaissance",
+      "requires": {
+        "permission_any": ["android.permission.MANAGE_EXTERNAL_STORAGE", "android.permission.QUERY_ALL_PACKAGES"]
+      },
+      "description": "The app asks to see all files or every installed package.",
+      "rationale": "Broad visibility is used to inventory the device, find banking apps and locate documents to exfiltrate.",
+      "mitre": ["T1418"]
+    },
+    {
+      "id": "PERM-09",
+      "title": "Requests usage-statistics access",
+      "severity": "medium",
+      "category": "surveillance",
+      "requires": { "permission": "android.permission.PACKAGE_USAGE_STATS" },
+      "description": "The app can read which apps the user opens and for how long.",
+      "rationale": "Usage access is surveillance data and is also used to time overlays against banking apps.",
+      "mitre": ["T1418"]
+    },
+    {
+      "id": "PERM-10",
+      "title": "Can record audio or camera and run persistently",
+      "severity": "high",
+      "category": "spyware",
+      "requires": {
+        "all": [
+          { "permission_any": ["android.permission.RECORD_AUDIO", "android.permission.CAMERA"] },
+          {
+            "any": [
+              { "permission": "android.permission.RECEIVE_BOOT_COMPLETED" },
+              { "permission": "android.permission.FOREGROUND_SERVICE" }
+            ]
+          }
+        ]
+      },
+      "description": "Microphone or camera access is combined with background execution.",
+      "rationale": "Recording sensors without a visible foreground use is a spyware capability; legitimate apps normally capture only while open.",
+      "mitre": ["T1429"]
+    },
+    {
+      "id": "PERM-11",
+      "title": "Tracks location in the background and can upload it",
+      "severity": "high",
+      "category": "stalkerware",
+      "requires": {
+        "all": [
+          { "permission": "android.permission.ACCESS_FINE_LOCATION" },
+          { "permission": "android.permission.ACCESS_BACKGROUND_LOCATION" },
+          { "permission": "android.permission.INTERNET" }
+        ]
+      },
+      "description": "Fine-grained location is collected while the app is not in use.",
+      "rationale": "Background location plus network access is the stalkerware pattern; few non-navigation apps need it.",
+      "mitre": ["T1430"]
+    },
+    {
+      "id": "API-01",
+      "title": "Sends SMS from code",
+      "severity": "high",
+      "category": "sms_fraud",
+      "requires": { "api": "SmsManager;->send" },
+      "description": "The DEX references SmsManager send methods.",
+      "rationale": "Programmatic SMS sending is used for premium-rate fraud and for silently forwarding intercepted messages.",
+      "mitre": ["T1412"]
+    },
+    {
+      "id": "API-02",
+      "title": "Loads code at runtime",
+      "severity": "high",
+      "category": "dynamic_code",
+      "requires": { "api_any": ["Ldalvik/system/DexClassLoader;", "Ldalvik/system/PathClassLoader;", "Ldalvik/system/InMemoryDexClassLoader;"] },
+      "description": "The DEX references a runtime class loader.",
+      "rationale": "Loading DEX at runtime lets the analysed file hide its real behaviour behind a downloaded or decrypted payload.",
+      "mitre": ["T1407"]
+    },
+    {
+      "id": "API-03",
+      "title": "Executes shell commands",
+      "severity": "medium",
+      "category": "execution",
+      "requires": { "api_any": ["Ljava/lang/Runtime;->exec", "Ljava/lang/ProcessBuilder;"] },
+      "description": "The DEX references process execution APIs.",
+      "rationale": "Shell execution is used for root attempts and to run bundled binaries; ordinary apps rarely need it.",
+      "mitre": ["T1626"]
+    },
+    {
+      "id": "API-04",
+      "title": "Exposes a JavaScript bridge in a WebView",
+      "severity": "high",
+      "category": "webview",
+      "requires": {
+        "all": [
+          { "api": "addJavascriptInterface" },
+          { "api": "setJavaScriptEnabled" },
+          { "api": "loadUrl" }
+        ]
+      },
+      "description": "A WebView loads content with JavaScript and a native bridge enabled.",
+      "rationale": "Bridging JS into app code turns a hijacked page or injected prompt into native-code access.",
+      "mitre": ["T1417"]
+    },
+    {
+      "id": "API-05",
+      "title": "Uses weak or hardcoded cryptography",
+      "severity": "medium",
+      "category": "obfuscation",
+      "requires": {
+        "all": [
+          { "api": "Ljavax/crypto/Cipher;" },
+          { "string_regex": "(?i)(AES/ECB|DES/ECB|DESede/ECB)" }
+        ]
+      },
+      "description": "ECB-mode ciphers are referenced in code.",
+      "rationale": "ECB ignores block position and is common in string-encryption routines and in hand-rolled payload encryption.",
+      "mitre": ["T1406"]
+    },
+    {
+      "id": "API-06",
+      "title": "Reads telephony identifiers",
+      "severity": "medium",
+      "category": "fingerprinting",
+      "requires": {
+        "api_any": [
+          "Landroid/telephony/TelephonyManager;->getDeviceId",
+          "Landroid/telephony/TelephonyManager;->getSubscriberId",
+          "Landroid/telephony/TelephonyManager;->getLine1Number",
+          "Landroid/telephony/TelephonyManager;->getImei"
+        ]
+      },
+      "description": "The app reads device or subscriber identifiers.",
+      "rationale": "Persistent identifiers are used for device fingerprinting and to bind a victim to an account.",
+      "mitre": ["T1418"]
+    },
+    {
+      "id": "API-07",
+      "title": "Queries SMS, contacts or call-log providers",
+      "severity": "high",
+      "category": "data_harvesting",
+      "requires": {
+        "all": [
+          { "api_any": ["ContentResolver;->query", "ContentResolver;->rawQuery"] },
+          { "string_any": ["content://sms", "content://mms", "content://contacts", "content://call_log"] }
+        ]
+      },
+      "description": "Content-provider queries target personal messaging or contact stores.",
+      "rationale": "Direct provider queries bypass the user-facing UI and are how bulk data is scraped.",
+      "mitre": ["T1412", "T1432"]
+    },
+    {
+      "id": "API-08",
+      "title": "Automates the interface through accessibility",
+      "severity": "high",
+      "category": "accessibility_abuse",
+      "requires": {
+        "all": [
+          { "api": "AccessibilityService;" },
+          { "api": "performGlobalAction" }
+        ]
+      },
+      "description": "Accessibility events and global actions are both used.",
+      "rationale": "Reading events and issuing global actions is the machinery of automated click fraud and permission-dialog abuse.",
+      "mitre": ["T1417"]
+    },
+    {
+      "id": "API-09",
+      "title": "Can lock or wipe the device",
+      "severity": "critical",
+      "category": "ransomware",
+      "requires": { "api_any": ["DevicePolicyManager;->lockNow", "DevicePolicyManager;->wipeData"] },
+      "description": "Device-administrator lock or wipe calls are present.",
+      "rationale": "Locking or wiping without a clear enterprise context is the defining action of Android ransomware.",
+      "mitre": ["T1626"]
+    },
+    {
+      "id": "API-10",
+      "title": "Reads the clipboard",
+      "severity": "medium",
+      "category": "credential_theft",
+      "requires": { "api": "getPrimaryClip" },
+      "description": "The app reads clipboard contents.",
+      "rationale": "Clipboards carry passwords, OTPs and crypto addresses; reading them is a cheap credential-theft path.",
+      "mitre": ["T1414"]
+    },
+    {
+      "id": "API-11",
+      "title": "Inventories installed apps and can upload the list",
+      "severity": "low",
+      "category": "reconnaissance",
+      "requires": {
+        "all": [
+          { "api_any": ["getInstalledPackages", "getInstalledApplications"] },
+          { "api_any": ["Ljava/net/Socket;", "Ljava/net/HttpURLConnection;", "Lokhttp3/OkHttpClient;"] }
+        ]
+      },
+      "description": "The package list is combined with network capability.",
+      "rationale": "App inventories are used to decide which banking or wallet apps a victim has installed.",
+      "mitre": ["T1418"]
+    },
+    {
+      "id": "API-12",
+      "title": "Resolves methods and fields by reflection",
+      "severity": "medium",
+      "category": "anti_analysis",
+      "requires": {
+        "all": [
+          { "api": "Ljava/lang/Class;->forName" },
+          { "api_any": ["getDeclaredMethod", "getDeclaredField"] }
+        ]
+      },
+      "description": "Classes are loaded by name and members resolved at runtime.",
+      "rationale": "Reflection hides API use from simple scanners and is common in droppers and packed loaders.",
+      "mitre": ["T1406"]
+    },
+    {
+      "id": "API-15",
+      "title": "Combines Base64, crypto and a class loader",
+      "severity": "high",
+      "category": "obfuscation",
+      "requires": {
+        "all": [
+          { "api": "Landroid/util/Base64;" },
+          { "api": "Ljavax/crypto/Cipher;" },
+          { "api_any": ["Ldalvik/system/DexClassLoader;", "Ldalvik/system/PathClassLoader;", "Ldalvik/system/InMemoryDexClassLoader;"] }
+        ]
+      },
+      "description": "Decoding, decryption and dynamic loading appear together.",
+      "rationale": "That three-step chain is a payload-unpacking routine: decode a blob, decrypt it, load it as code.",
+      "mitre": ["T1407"]
+    },
+    {
+      "id": "NET-01",
+      "title": "Contacts a raw IP address or non-standard port",
+      "severity": "medium",
+      "category": "c2",
+      "requires": { "url_regex": "https?://\\d{1,3}(\\.\\d{1,3}){3}(:\\d{2,5})?" },
+      "description": "A URL points at a numeric address instead of a domain.",
+      "rationale": "Hardcoded IPs avoid domain takedowns and are typical of disposable command-and-control endpoints.",
+      "mitre": ["T1437"]
+    },
+    {
+      "id": "NET-02",
+      "title": "Ships a Telegram or Discord exfiltration endpoint",
+      "severity": "high",
+      "category": "exfiltration",
+      "requires": { "string_any": ["api.telegram.org/bot", "discord.com/api/webhooks", "discordapp.com/api/webhooks"] },
+      "description": "A chat-service bot endpoint is embedded in the app.",
+      "rationale": "Bot APIs are free, anonymous and instant: the standard way malware ships stolen data off-device.",
+      "mitre": ["T1437"]
+    },
+    {
+      "id": "NET-03",
+      "title": "Allows cleartext HTTP traffic",
+      "severity": "low",
+      "category": "transport",
+      "requires": {
+        "any": [
+          { "flag": { "name": "usesCleartextTraffic", "value": "true" } },
+          { "url_regex": "^http://" }
+        ]
+      },
+      "description": "HTTP is explicitly allowed or used.",
+      "rationale": "Cleartext traffic exposes credentials and stolen data to network attackers, and is unusual in maintained apps.",
+      "mitre": []
+    },
+    {
+      "id": "NET-04",
+      "title": "Uses disposable or anonymised infrastructure",
+      "severity": "medium",
+      "category": "c2",
+      "requires": { "url_regex": "(?i)(duckdns|no-ip|ngrok|pastebin|\\.onion|serveo|trycloudflare)" },
+      "description": "A URL uses dynamic DNS, a tunnel, a paste site or Tor.",
+      "rationale": "These services are free and fast to rotate, which is why they host short-lived malware infrastructure.",
+      "mitre": ["T1437"]
+    },
+    {
+      "id": "NET-05",
+      "title": "Contains a hardcoded cloud credential",
+      "severity": "medium",
+      "category": "credential_leak",
+      "requires": { "string_regex": "(AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35})" },
+      "description": "An AWS or Google API key pattern appears in the DEX strings.",
+      "rationale": "Committed keys give backend access to anyone who extracts them and confirm the app talks to owned infrastructure.",
+      "mitre": ["T1552"]
+    },
+    {
+      "id": "ID-01",
+      "title": "Signed with a debug or expired certificate",
+      "severity": "low",
+      "category": "identity",
+      "requires": { "any": [{ "cert_debug": true }, { "cert_expired": true }] },
+      "description": "The signing certificate is a debug key or has expired.",
+      "rationale": "Debug keys are excluded by Play and shared by every development build; expired certs signal an abandoned or repackaged app.",
+      "mitre": []
+    },
+    {
+      "id": "ID-04",
+      "title": "Insecure build flags",
+      "severity": "low",
+      "category": "posture",
+      "requires": {
+        "any": [
+          { "flag": { "name": "debuggable", "value": "true" } },
+          { "flag": { "name": "testOnly", "value": "true" } }
+        ]
+      },
+      "description": "The manifest marks the app debuggable or test-only.",
+      "rationale": "Debuggable builds allow attached debugging and memory inspection, and are not production releases.",
+      "mitre": []
+    },
+    {
+      "id": "ID-05",
+      "title": "Known packer or protector detected",
+      "severity": "medium",
+      "category": "obfuscation",
+      "requires": { "packer": true },
+      "description": "Signatures of a commercial Android packer are present.",
+      "rationale": "Packers hide the real DEX from static analysis; a low score on a packed app means little and the report says so.",
+      "mitre": ["T1406"]
+    },
+    {
+      "id": "ID-06",
+      "title": "Ships a hidden second-stage payload in assets",
+      "severity": "high",
+      "category": "dropper",
+      "requires": {
+        "any": [
+          { "asset": "(?i)\\.(dex|jar|apk|zip|bin|enc|dat)$" },
+          { "high_entropy_asset": true }
+        ]
+      },
+      "description": "An asset looks like packed code or a high-entropy blob.",
+      "rationale": "Executable or encrypted assets are where droppers keep the payload before loading it at runtime.",
+      "mitre": ["T1407"]
+    },
+    {
+      "id": "ID-07",
+      "title": "Exports components without protecting them",
+      "severity": "medium",
+      "category": "attack_surface",
+      "requires": { "exported_unprotected": 1 },
+      "description": "At least one exported component has no permission guard.",
+      "rationale": "Any app on the device can invoke these entry points; when they perform sensitive work this is a hijack path.",
+      "mitre": []
+    },
+    {
+      "id": "CMP-01",
+      "title": "Declares an accessibility service",
+      "severity": "high",
+      "category": "accessibility_abuse",
+      "requires": { "component_name_contains": { "kind": "service", "text": "AccessibilityService" } },
+      "description": "A service named as an accessibility service is declared.",
+      "rationale": "Combined with BIND_ACCESSIBILITY_SERVICE this is an active screen-control implementation, not just a requested permission.",
+      "mitre": ["T1417"]
+    },
+    {
+      "id": "CMP-02",
+      "title": "Declares a notification listener",
+      "severity": "high",
+      "category": "notification_interception",
+      "requires": { "component_name_contains": { "kind": "service", "text": "NotificationListenerService" } },
+      "description": "The app implements a notification listener service.",
+      "rationale": "Notification access exposes one-time passcodes and bank alerts shown by other apps.",
+      "mitre": ["T1517"]
+    },
+    {
+      "id": "CMP-05",
+      "title": "Registers for incoming SMS broadcasts",
+      "severity": "high",
+      "category": "sms_interception",
+      "requires": { "intent_action": "android.provider.Telephony.SMS_RECEIVED" },
+      "description": "A receiver is registered for the incoming-SMS broadcast.",
+      "rationale": "Receiving that broadcast is a precondition for intercepting verification codes before the user sees them.",
+      "mitre": ["T1412"]
+    }
+  ],
+  "combos": [
+    {
+      "id": "BANKER",
+      "title": "Banking-trojan pattern",
+      "rationale": "Screen control, draw-over windows, SMS access and a network path together describe a banking trojan campaign rather than isolated risky permissions.",
+      "finding_ids": ["PERM-01", "PERM-02", "PERM-03", "NET-01"]
+    },
+    {
+      "id": "OTP-STEALER",
+      "title": "One-time-passcode interception pattern",
+      "rationale": "Reading incoming SMS while listening for the broadcast, with no visible messaging purpose, is how OTPs are harvested.",
+      "finding_ids": ["PERM-01", "CMP-05"]
+    },
+    {
+      "id": "DROPPER",
+      "title": "Second-stage dropper pattern",
+      "rationale": "Install capability plus runtime DEX loading plus a shipped blob means the analysed file is only the first stage.",
+      "finding_ids": ["PERM-04", "API-02", "ID-06"]
+    },
+    {
+      "id": "RANSOM",
+      "title": "Ransomware pattern",
+      "rationale": "Device-admin rights, lock or wipe calls and boot persistence are the standard Android ransomware chain.",
+      "finding_ids": ["PERM-05", "API-09", "PERM-06"]
+    },
+    {
+      "id": "STALKER",
+      "title": "Stalkerware pattern",
+      "rationale": "Background location combined with reboot persistence and upload capability describes covert tracking.",
+      "finding_ids": ["PERM-11", "PERM-06"]
+    },
+    {
+      "id": "SPYWARE",
+      "title": "Bulk personal-data harvesting",
+      "rationale": "Contacts or call logs plus SMS plus a network path is bulk collection of the data spyware sells.",
+      "finding_ids": ["PERM-07", "PERM-01", "NET-01"]
+    },
+    {
+      "id": "NOTIF-SNIFFER",
+      "title": "Notification interception with exfiltration",
+      "rationale": "A notification listener plus an embedded exfiltration endpoint lets the app forward 2FA codes in real time.",
+      "finding_ids": ["CMP-02", "NET-02"]
+    }
+  ]
+}

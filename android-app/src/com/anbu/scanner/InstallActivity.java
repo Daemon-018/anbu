@@ -5,12 +5,14 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.app.PendingIntent;
 import android.content.pm.PackageInstaller;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -216,12 +218,14 @@ public final class InstallActivity extends Activity {
         new Thread(() -> {
             try {
                 PackageInstaller pi = getPackageManager().getPackageInstaller();
-                int sessionId = pi.createSession(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+                PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(
+                        PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+                int sessionId = pi.createSession(params);
                 PackageInstaller.Session session = pi.openSession(sessionId);
 
                 // Write APKs to session
                 for (File apk : set.apks) {
-                    try (OutputStream os = session.openWrite(apk.getName(), 0)) {
+                    try (OutputStream os = session.openWrite(apk.getName(), 0, apk.length())) {
                         try (FileInputStream is = new FileInputStream(apk)) {
                             byte[] buffer = new byte[64 * 1024];
                             int read;
@@ -236,10 +240,10 @@ public final class InstallActivity extends Activity {
                 // Result receiver
                 Intent intent = new Intent(this, InstallResultReceiver.class);
                 intent.putExtra(InstallResultReceiver.EXTRA_SESSION_DIR, set.dir);
-                PendingIntent pendingIntent = PackageInstaller.Session.createPendingIntent(
+                PendingIntent pendingIntent = android.app.PendingIntent.getBroadcast(
                         this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
 
-                session.commit(pendingIntent.getIntent());
+                session.commit(pendingIntent.getIntentSender());
                 session.close();
 
                 runOnUiThread(() -> {

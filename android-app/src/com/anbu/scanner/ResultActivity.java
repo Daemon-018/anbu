@@ -69,16 +69,16 @@ public final class ResultActivity extends Activity {
 
     private View build() {
         LinearLayout root = Ui.column(this);
-        root.setBackgroundColor(Ui.BG);
+        root.setBackgroundColor(Ui.getBg());
         root.setFitsSystemWindows(true);
 
         LinearLayout top = Ui.row(this);
         top.setPadding(Ui.dp(this, 14), Ui.dp(this, 10), Ui.dp(this, 18), Ui.dp(this, 4));
-        TextView back = Ui.text(this, "\u2039 Back", 14, Ui.MUTED, true);
+        TextView back = Ui.text(this, "\u2039 Back", 14, Ui.getMuted(), true);
         back.setPadding(Ui.dp(this, 6), Ui.dp(this, 10), Ui.dp(this, 12), Ui.dp(this, 10));
         back.setOnClickListener(v -> finish());
         top.addView(back);
-        barTitle = Ui.text(this, "Result", 18, Ui.TEXT, true);
+        barTitle = Ui.text(this, "Result", 18, Ui.getText(), true);
         top.addView(barTitle, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         root.addView(top);
@@ -132,7 +132,7 @@ public final class ResultActivity extends Activity {
         content.addView(Ui.text(this,
                 "Static observation, not runtime proof. A scan cannot see server-side behaviour "
                         + "or code downloaded later, and cannot guarantee an app is safe.",
-                11, Ui.MUTED, false));
+                11, Ui.getMuted(), false));
     }
 
     private View headerCard() {
@@ -145,26 +145,26 @@ public final class ResultActivity extends Activity {
         texts.setPadding(Ui.dp(this, 12), 0, 0, 0);
         String label = report.app.label == null || report.app.label.isEmpty()
                 ? report.app.packageName : report.app.label;
-        texts.addView(Ui.text(this, label, 20, Ui.TEXT, true));
-        TextView pkg = Ui.text(this, report.app.packageName, 11, Ui.MUTED, false);
+        texts.addView(Ui.text(this, label, 20, Ui.getText(), true));
+        TextView pkg = Ui.text(this, report.app.packageName, 11, Ui.getMuted(), false);
         pkg.setTypeface(Typeface.MONOSPACE);
         texts.addView(pkg);
         String meta = report.app.versionName == null || report.app.versionName.isEmpty()
                 ? "" : "v" + report.app.versionName;
         if (report.app.system) meta = meta.isEmpty() ? "system app" : meta + " \u00B7 system app";
-        if (!meta.isEmpty()) texts.addView(Ui.text(this, meta, 11, Ui.MUTED, false));
+        if (!meta.isEmpty()) texts.addView(Ui.text(this, meta, 11, Ui.getMuted(), false));
         head.addView(texts, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         card.addView(head);
 
         LinearLayout chips = Ui.row(this);
         chips.setPadding(0, Ui.dp(this, 12), 0, 0);
-        chips.addView(chip(report.detailsOnly ? "Details only" : "Full scan", Ui.MUTED));
+        chips.addView(chip(report.detailsOnly ? "Details only" : "Full scan", Ui.getMuted()));
         addChipGap(chips);
         chips.addView(chip(report.score.confidence + " confidence",
-                "high".equals(report.score.confidence) ? Ui.OK : Ui.MUTED));
+                "high".equals(report.score.confidence) ? Ui.COLOR_OK : Ui.getMuted()));
         addChipGap(chips);
-        chips.addView(chip(Ui.percent(report.score.coverage) + " of code", Ui.MUTED));
+        chips.addView(chip(Ui.percent(report.score.coverage) + " of code", Ui.getMuted()));
         card.addView(chips);
         return card;
     }
@@ -174,11 +174,11 @@ public final class ResultActivity extends Activity {
         Model.Score score = report.score;
 
         if (score.inconclusive || report.detailsOnly) {
-            card.addView(Ui.text(this, "LIMITED INSPECTION", 12, Ui.ACCENT, true));
-            TextView headline = Ui.text(this, limitedHeadline(), 20, Ui.TEXT, true);
+            card.addView(Ui.text(this, "LIMITED INSPECTION", 12, Ui.getAccent(), true));
+            TextView headline = Ui.text(this, limitedHeadline(), 20, Ui.getText(), true);
             headline.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 6));
             card.addView(headline);
-            card.addView(Ui.text(this, limitedBody(), 13, Ui.MUTED, false));
+            card.addView(Ui.text(this, limitedBody(), 13, Ui.getMuted(), false));
             if (score.value > 0) {
                 TextView partial = Ui.text(this,
                         "Partial score " + score.value + "/100 \u00B7 low confidence",
@@ -198,14 +198,14 @@ public final class ResultActivity extends Activity {
         words.setPadding(Ui.dp(this, 14), 0, 0, 0);
         words.addView(Ui.text(this, Ui.bandLabel(score.band).toUpperCase(), 16,
                 Ui.bandColor(score.band), true));
-        words.addView(Ui.text(this, summary(), 13, Ui.TEXT, false));
+        words.addView(Ui.text(this, summary(), 13, Ui.getText(), false));
         figure.addView(words, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         card.addView(figure);
 
         String inspected = "Inspected " + Ui.percent(score.coverage) + " of code \u00B7 "
                 + report.findings.size() + (report.findings.size() == 1 ? " finding" : " findings");
-        TextView stats = Ui.text(this, inspected, 11, Ui.MUTED, false);
+        TextView stats = Ui.text(this, inspected, 11, Ui.getMuted(), false);
         stats.setPadding(0, Ui.dp(this, 10), 0, 0);
         card.addView(stats);
         return card;
@@ -214,12 +214,12 @@ public final class ResultActivity extends Activity {
     private View comboCard(Model.Combo combo) {
         LinearLayout card = Ui.card(this);
         LinearLayout head = Ui.row(this);
-        head.addView(Ui.text(this, "MATCHED PATTERN", 11, Ui.ACCENT, true));
+        head.addView(Ui.text(this, "MATCHED PATTERN", 11, Ui.getAccent(), true));
         card.addView(head);
-        TextView title = Ui.text(this, combo.title, 17, Ui.TEXT, true);
+        TextView title = Ui.text(this, combo.title, 17, Ui.getText(), true);
         title.setPadding(0, Ui.dp(this, 6), 0, Ui.dp(this, 4));
         card.addView(title);
-        card.addView(Ui.text(this, combo.rationale, 12, Ui.MUTED, false));
+        card.addView(Ui.text(this, combo.rationale, 12, Ui.getMuted(), false));
         return card;
     }
 
@@ -228,7 +228,7 @@ public final class ResultActivity extends Activity {
         card.addView(Ui.text(this, report.findings.isEmpty() ? "No findings"
                         : report.findings.size() + (report.findings.size() == 1
                         ? " finding" : " findings"),
-                17, Ui.TEXT, true));
+                17, Ui.getText(), true));
 
         if (report.findings.isEmpty()) {
             card.addView(Ui.text(this,
@@ -236,7 +236,7 @@ public final class ResultActivity extends Activity {
                             + "a known detection. " + (report.detailsOnly
                             ? "Android did not allow this app's code to be read on this device."
                             : "No scan can guarantee an app is safe."),
-                    12, Ui.MUTED, false));
+                    12, Ui.getMuted(), false));
             return card;
         }
 
@@ -246,7 +246,7 @@ public final class ResultActivity extends Activity {
             card.addView(findingRow(sorted.get(i)));
         }
         if (sorted.size() > shown) {
-            TextView more = Ui.text(this, "+ " + (sorted.size() - shown) + " more", 12, Ui.MUTED, false);
+            TextView more = Ui.text(this, "+ " + (sorted.size() - shown) + " more", 12, Ui.getMuted(), false);
             more.setPadding(0, Ui.dp(this, 4), 0, 0);
             card.addView(more);
         }
@@ -264,20 +264,20 @@ public final class ResultActivity extends Activity {
 
         LinearLayout texts = Ui.column(this);
         texts.setPadding(Ui.dp(this, 10), 0, 0, 0);
-        texts.addView(Ui.text(this, finding.title, 13, Ui.TEXT, true));
-        texts.addView(Ui.text(this, Ui.title(finding.category), 11, Ui.MUTED, false));
+        texts.addView(Ui.text(this, finding.title, 13, Ui.getText(), true));
+        texts.addView(Ui.text(this, Ui.title(finding.category), 11, Ui.getMuted(), false));
         row.addView(texts, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        row.addView(Ui.text(this, "\u203A", 20, Ui.MUTED, false));
+        row.addView(Ui.text(this, "\u203A", 20, Ui.getMuted(), false));
         row.setOnClickListener(v -> openFindings(finding.id));
         return row;
     }
 
     private View notesCard() {
         LinearLayout card = Ui.card(this);
-        card.addView(Ui.text(this, "About this result", 14, Ui.TEXT, true));
+        card.addView(Ui.text(this, "About this result", 14, Ui.getText(), true));
         for (String note : report.score.notes) {
-            TextView line = Ui.text(this, "\u2022  " + note, 12, Ui.MUTED, false);
+            TextView line = Ui.text(this, "\u2022  " + note, 12, Ui.getMuted(), false);
             line.setPadding(0, Ui.dp(this, 7), 0, 0);
             card.addView(line);
         }
@@ -336,7 +336,7 @@ public final class ResultActivity extends Activity {
 
     private void keepAction() {
         Ui.addSpace(content, 12);
-        TextView keep = Ui.text(this, "Keep app (not recommended)", 13, Ui.MUTED, true);
+        TextView keep = Ui.text(this, "Keep app (not recommended)", 13, Ui.getMuted(), true);
         keep.setGravity(Gravity.CENTER);
         keep.setPadding(0, Ui.dp(this, 10), 0, Ui.dp(this, 10));
         keep.setOnClickListener(v -> confirmKeep());
@@ -467,15 +467,15 @@ public final class ResultActivity extends Activity {
         LinearLayout card = Ui.card(this);
         String label = report != null && report.app.label != null && !report.app.label.isEmpty()
                 ? report.app.label : packageName;
-        card.addView(Ui.text(this, "\u2713  Uninstalled", 13, Ui.OK, true));
+        card.addView(Ui.text(this, "\u2713  Uninstalled", 13, Ui.COLOR_OK, true));
         TextView headline = Ui.text(this, label + " was removed from this device.", 20,
-                Ui.TEXT, true);
+                Ui.getText(), true);
         headline.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 6));
         card.addView(headline);
         card.addView(Ui.text(this,
                 "The report stays on screen so you can still read what was found. "
                         + "The app is no longer installed.",
-                12, Ui.MUTED, false));
+                12, Ui.getMuted(), false));
 
         Ui.addSpace(card, 16);
         Button view = Ui.button(this, "View report", true);
@@ -502,13 +502,13 @@ public final class ResultActivity extends Activity {
         barTitle.setText("Result");
 
         LinearLayout card = Ui.card(this);
-        card.addView(Ui.text(this, "Report unavailable", 19, Ui.TEXT, true));
+        card.addView(Ui.text(this, "Report unavailable", 19, Ui.getText(), true));
         card.addView(Ui.text(this,
                 "Reports are kept in memory and Android cleared this one when it stopped ANBU. "
                         + "The app was not judged. Scan it again for a fresh result.",
-                12, Ui.MUTED, false));
+                12, Ui.getMuted(), false));
         if (packageName != null && !packageName.isEmpty()) {
-            TextView pkg = Ui.text(this, packageName, 11, Ui.MUTED, false);
+            TextView pkg = Ui.text(this, packageName, 11, Ui.getMuted(), false);
             pkg.setTypeface(Typeface.MONOSPACE);
             pkg.setPadding(0, Ui.dp(this, 10), 0, 0);
             card.addView(pkg);

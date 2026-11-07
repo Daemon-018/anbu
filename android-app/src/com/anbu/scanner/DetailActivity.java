@@ -55,16 +55,16 @@ public final class DetailActivity extends Activity {
 
     private View build() {
         LinearLayout root = Ui.column(this);
-        root.setBackgroundColor(Ui.BG);
+        root.setBackgroundColor(Ui.getBg());
         root.setFitsSystemWindows(true);
 
         LinearLayout top = Ui.row(this);
         top.setPadding(Ui.dp(this, 14), Ui.dp(this, 10), Ui.dp(this, 18), Ui.dp(this, 4));
-        TextView back = Ui.text(this, "\u2039 Back", 14, Ui.MUTED, true);
+        TextView back = Ui.text(this, "\u2039 Back", 14, Ui.getMuted(), true);
         back.setPadding(Ui.dp(this, 6), Ui.dp(this, 10), Ui.dp(this, 12), Ui.dp(this, 10));
         back.setOnClickListener(v -> finish());
         top.addView(back);
-        top.addView(Ui.text(this, "Findings", 18, Ui.TEXT, true),
+        top.addView(Ui.text(this, "Findings", 18, Ui.getText(), true),
                 new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         root.addView(top);
 
@@ -99,7 +99,7 @@ public final class DetailActivity extends Activity {
         content.addView(Ui.text(this,
                 "Static observation, not runtime proof. Evidence quotes come from the installed "
                         + "APK's manifest, certificate or readable code; nothing here was executed.",
-                11, Ui.MUTED, false));
+                11, Ui.getMuted(), false));
     }
 
     private View headerCard() {
@@ -113,8 +113,8 @@ public final class DetailActivity extends Activity {
         texts.setPadding(Ui.dp(this, 12), 0, 0, 0);
         String label = report.app.label == null || report.app.label.isEmpty()
                 ? report.app.packageName : report.app.label;
-        texts.addView(Ui.text(this, label, 17, Ui.TEXT, true));
-        TextView pkg = Ui.text(this, report.app.packageName, 11, Ui.MUTED, false);
+        texts.addView(Ui.text(this, label, 17, Ui.getText(), true));
+        TextView pkg = Ui.text(this, report.app.packageName, 11, Ui.getMuted(), false);
         pkg.setTypeface(Typeface.MONOSPACE);
         texts.addView(pkg);
         head.addView(texts, new LinearLayout.LayoutParams(0,
@@ -125,19 +125,19 @@ public final class DetailActivity extends Activity {
         chips.setPadding(0, Ui.dp(this, 12), 0, 0);
         chips.addView(Ui.chip(this, report.findings.size()
                         + (report.findings.size() == 1 ? " finding" : " findings"),
-                report.findings.isEmpty() ? Ui.OK : Ui.TEXT));
+                report.findings.isEmpty() ? Ui.COLOR_OK : Ui.getText()));
         chipGap(chips);
         chips.addView(Ui.chip(this,
-                Ui.percent(report.score.coverage) + " of code", Ui.MUTED));
+                Ui.percent(report.score.coverage) + " of code", Ui.getMuted()));
         chipGap(chips);
-        chips.addView(Ui.chip(this, report.detailsOnly ? "Details only" : "Full scan", Ui.MUTED));
+        chips.addView(Ui.chip(this, report.detailsOnly ? "Details only" : "Full scan", Ui.getMuted()));
         card.addView(chips);
 
         String limitation = report.detailsOnly
                 ? "Android did not allow this app's code to be read, so these are manifest and "
                 + "signature findings only."
                 : "Sorted by severity. Nothing matched is not proof that the app is safe.";
-        TextView note = Ui.text(this, limitation, 11, Ui.MUTED, false);
+        TextView note = Ui.text(this, limitation, 11, Ui.getMuted(), false);
         note.setPadding(0, Ui.dp(this, 10), 0, 0);
         card.addView(note);
         return card;
@@ -145,13 +145,13 @@ public final class DetailActivity extends Activity {
 
     private View emptyCard() {
         LinearLayout card = Ui.card(this);
-        card.addView(Ui.text(this, "No findings", 18, Ui.TEXT, true));
+        card.addView(Ui.text(this, "No findings", 18, Ui.getText(), true));
         TextView body = Ui.text(this,
                 "Permissions, components, signing certificate and "
                         + (report.detailsOnly ? "no" : Ui.percent(report.score.coverage) + " of")
                         + " code were checked. Nothing matched the detections that ran on this "
                         + "device. A scan cannot guarantee an app is safe.",
-                12, Ui.MUTED, false);
+                12, Ui.getMuted(), false);
         body.setPadding(0, Ui.dp(this, 8), 0, 0);
         card.addView(body);
         return card;
@@ -160,25 +160,25 @@ public final class DetailActivity extends Activity {
     private View findingCard(Model.Finding finding, boolean focused) {
         LinearLayout card = Ui.card(this);
         if (focused) {
-            card.setBackground(Ui.background(this, Ui.SURFACE, 14, Ui.ACCENT));
+            card.setBackground(Ui.background(this, Ui.getSurface(), 14, Ui.getAccent()));
         }
 
         LinearLayout chips = Ui.row(this);
         chips.addView(Ui.chip(this, finding.severity.toUpperCase(),
                 Ui.severityColor(finding.severity)));
         chipGap(chips);
-        chips.addView(Ui.chip(this, Ui.title(finding.category), Ui.MUTED));
+        chips.addView(Ui.chip(this, Ui.title(finding.category), Ui.getMuted()));
         if (focused) {
             chipGap(chips);
-            chips.addView(Ui.chip(this, "Opened", Ui.ACCENT));
+            chips.addView(Ui.chip(this, "Opened", Ui.getAccent()));
         }
         card.addView(chips);
 
-        TextView title = Ui.text(this, finding.title, 17, Ui.TEXT, true);
+        TextView title = Ui.text(this, finding.title, 17, Ui.getText(), true);
         title.setPadding(0, Ui.dp(this, 10), 0, Ui.dp(this, 4));
         card.addView(title);
 
-        TextView id = Ui.text(this, finding.id, 10, Ui.MUTED, false);
+        TextView id = Ui.text(this, finding.id, 10, Ui.getMuted(), false);
         id.setTypeface(Typeface.MONOSPACE);
         card.addView(id);
 
@@ -186,7 +186,7 @@ public final class DetailActivity extends Activity {
         card.addView(section("Why it matters", finding.rationale));
 
         if (!finding.evidence.isEmpty()) {
-            TextView heading = Ui.text(this, "Evidence", 12, Ui.TEXT, true);
+            TextView heading = Ui.text(this, "Evidence", 12, Ui.getText(), true);
             heading.setPadding(0, Ui.dp(this, 14), 0, Ui.dp(this, 2));
             card.addView(heading);
             for (Model.Evidence evidence : finding.evidence) {
@@ -196,7 +196,7 @@ public final class DetailActivity extends Activity {
 
         if (!finding.mitre.isEmpty()) {
             TextView mitre = Ui.text(this, "MITRE ATT&CK Mobile: " + join(finding.mitre),
-                    11, Ui.MUTED, false);
+                    11, Ui.getMuted(), false);
             mitre.setPadding(0, Ui.dp(this, 14), 0, 0);
             card.addView(mitre);
         }
@@ -206,10 +206,10 @@ public final class DetailActivity extends Activity {
     private View section(String heading, String body) {
         LinearLayout block = Ui.column(this);
         block.setPadding(0, Ui.dp(this, 12), 0, 0);
-        block.addView(Ui.text(this, heading, 12, Ui.TEXT, true));
+        block.addView(Ui.text(this, heading, 12, Ui.getText(), true));
         TextView text = Ui.text(this,
                 body == null || body.isEmpty() ? "No further detail recorded." : body,
-                13, Ui.MUTED, false);
+                13, Ui.getMuted(), false);
         text.setPadding(0, Ui.dp(this, 4), 0, 0);
         block.addView(text);
         return block;
@@ -217,24 +217,24 @@ public final class DetailActivity extends Activity {
 
     private View evidenceBlock(final Model.Evidence evidence) {
         LinearLayout block = Ui.column(this);
-        block.setBackground(Ui.background(this, Ui.SURFACE_2, 8, Ui.LINE));
+        block.setBackground(Ui.background(this, Ui.getSurface2(), 8, Ui.getLine()));
         int p = Ui.dp(this, 10);
         block.setPadding(p, p, p, p);
         block.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         Ui.margins(block, 0, 10, 0, 0);
 
-        TextView artifact = Ui.text(this, evidence.artifact, 10, Ui.MUTED, true);
+        TextView artifact = Ui.text(this, evidence.artifact, 10, Ui.getMuted(), true);
         artifact.setTypeface(Typeface.MONOSPACE);
         block.addView(artifact);
 
-        TextView quote = Ui.text(this, evidence.quote, 11, Ui.TEXT, false);
+        TextView quote = Ui.text(this, evidence.quote, 11, Ui.getText(), false);
         quote.setTypeface(Typeface.MONOSPACE);
         quote.setTextIsSelectable(true);
         quote.setPadding(0, Ui.dp(this, 6), 0, Ui.dp(this, 8));
         block.addView(quote);
 
-        TextView copy = Ui.text(this, "Copy evidence", 11, Ui.ACCENT, true);
+        TextView copy = Ui.text(this, "Copy evidence", 11, Ui.getAccent(), true);
         copy.setPadding(0, Ui.dp(this, 2), 0, Ui.dp(this, 2));
         copy.setOnClickListener(v -> copy(evidence));
         block.addView(copy);
@@ -255,13 +255,13 @@ public final class DetailActivity extends Activity {
     private void showMissing() {
         content.removeAllViews();
         LinearLayout card = Ui.card(this);
-        card.addView(Ui.text(this, "Findings unavailable", 18, Ui.TEXT, true));
+        card.addView(Ui.text(this, "Findings unavailable", 18, Ui.getText(), true));
         card.addView(Ui.text(this,
                 "Reports are kept in memory and Android cleared this one when it stopped ANBU. "
                         + "Run the scan again for a fresh result.",
-                12, Ui.MUTED, false));
+                12, Ui.getMuted(), false));
         if (packageName != null && !packageName.isEmpty()) {
-            TextView pkg = Ui.text(this, packageName, 11, Ui.MUTED, false);
+            TextView pkg = Ui.text(this, packageName, 11, Ui.getMuted(), false);
             pkg.setTypeface(Typeface.MONOSPACE);
             pkg.setPadding(0, Ui.dp(this, 10), 0, 0);
             card.addView(pkg);

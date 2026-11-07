@@ -50,15 +50,15 @@ public final class MainActivity extends Activity {
 
     private View build() {
         LinearLayout root = Ui.column(this);
-        root.setBackgroundColor(Ui.BG);
+        root.setBackgroundColor(Ui.getBg());
         root.setFitsSystemWindows(true);
 
         LinearLayout header = Ui.column(this);
         int hp = Ui.dp(this, 20);
         header.setPadding(hp, Ui.dp(this, 18), hp, Ui.dp(this, 6));
-        header.addView(Ui.text(this, "ANBU", 30, Ui.TEXT, true));
+        header.addView(Ui.text(this, "ANBU", 30, Ui.getText(), true));
         header.addView(Ui.text(this,
-                "On-device app auditor \u00B7 nothing leaves this phone", 12, Ui.MUTED, false));
+                "On-device app auditor \u00B7 nothing leaves this phone", 12, Ui.getMuted(), false));
         root.addView(header);
 
         LinearLayout controls = Ui.column(this);
@@ -70,9 +70,9 @@ public final class MainActivity extends Activity {
         filter.setHint("Filter installed apps");
         filter.setSingleLine(true);
         filter.setTextSize(14);
-        filter.setTextColor(Ui.TEXT);
-        filter.setHintTextColor(Ui.MUTED);
-        filter.setBackground(Ui.background(this, Ui.SURFACE, 12, Ui.LINE));
+        filter.setTextColor(Ui.getText());
+        filter.setHintTextColor(Ui.getMuted());
+        filter.setBackground(Ui.background(this, Ui.getSurface(), 12, Ui.getLine()));
         int fp = Ui.dp(this, 14);
         filter.setPadding(fp, Ui.dp(this, 10), fp, Ui.dp(this, 10));
         filter.addTextChangedListener(new FilterWatcher(() -> {
@@ -110,7 +110,7 @@ public final class MainActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         controls.addView(actions);
 
-        listStatus = Ui.text(this, "Reading installed packages\u2026", 12, Ui.MUTED, false);
+        listStatus = Ui.text(this, "Reading installed packages\u2026", 12, Ui.getMuted(), false);
         listStatus.setPadding(0, Ui.dp(this, 14), 0, Ui.dp(this, 6));
         controls.addView(listStatus);
         root.addView(controls);
@@ -209,11 +209,11 @@ public final class MainActivity extends Activity {
         if (visible.isEmpty()) {
             LinearLayout empty = Ui.card(this);
             empty.addView(Ui.text(this, query.isEmpty() ? "No apps to show" : "No matches",
-                    15, Ui.TEXT, true));
+                    15, Ui.getText(), true));
             empty.addView(Ui.text(this, query.isEmpty()
                             ? "Android did not return any installed packages."
                             : "Try part of the app name or package id.",
-                    12, Ui.MUTED, false));
+                    12, Ui.getMuted(), false));
             list.addView(empty, margins(0, 6, 0, 8));
             return;
         }
@@ -233,17 +233,17 @@ public final class MainActivity extends Activity {
         LinearLayout texts = Ui.column(this);
         texts.setPadding(Ui.dp(this, 12), 0, Ui.dp(this, 8), 0);
         String label = app.label == null || app.label.isEmpty() ? app.packageName : app.label;
-        texts.addView(Ui.text(this, label, 15, Ui.TEXT, true));
-        texts.addView(Ui.text(this, app.packageName, 11, Ui.MUTED, false));
+        texts.addView(Ui.text(this, label, 15, Ui.getText(), true));
+        texts.addView(Ui.text(this, app.packageName, 11, Ui.getMuted(), false));
 
         String meta = app.versionName == null || app.versionName.isEmpty()
                 ? "" : "v" + app.versionName;
         if (app.system) meta = meta.isEmpty() ? "system app" : meta + " \u00B7 system app";
-        if (!meta.isEmpty()) texts.addView(Ui.text(this, meta, 11, Ui.MUTED, false));
+        if (!meta.isEmpty()) texts.addView(Ui.text(this, meta, 11, Ui.getMuted(), false));
 
         row.addView(texts, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        row.addView(Ui.text(this, "\u203A", 26, Ui.MUTED, false));
+        row.addView(Ui.text(this, "\u203A", 26, Ui.getMuted(), false));
 
         row.setOnClickListener(v -> {
             Intent intent = new Intent(this, ScanActivity.class);

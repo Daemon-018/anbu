@@ -71,16 +71,16 @@ public final class AllResultsActivity extends Activity {
 
     private View build() {
         LinearLayout root = Ui.column(this);
-        root.setBackgroundColor(Ui.BG);
+        root.setBackgroundColor(Ui.getBg());
         root.setFitsSystemWindows(true);
 
         LinearLayout top = Ui.row(this);
         top.setPadding(Ui.dp(this, 14), Ui.dp(this, 10), Ui.dp(this, 18), Ui.dp(this, 4));
-        TextView back = Ui.text(this, "\u2039 Back", 14, Ui.MUTED, true);
+        TextView back = Ui.text(this, "\u2039 Back", 14, Ui.getMuted(), true);
         back.setPadding(Ui.dp(this, 6), Ui.dp(this, 10), Ui.dp(this, 12), Ui.dp(this, 10));
         back.setOnClickListener(v -> finish());
         top.addView(back);
-        top.addView(Ui.text(this, "Scan results", 18, Ui.TEXT, true),
+        top.addView(Ui.text(this, "Scan results", 18, Ui.getText(), true),
                 new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         root.addView(top);
 
@@ -120,7 +120,7 @@ public final class AllResultsActivity extends Activity {
             TextView note = Ui.text(this, missing + (missing == 1
                             ? " report was" : " reports were")
                             + " cleared when Android stopped ANBU. Scan those apps again to "
-                            + "restore them.", 11, Ui.MUTED, false);
+                            + "restore them.", 11, Ui.getMuted(), false);
             content.addView(note);
         }
 
@@ -134,7 +134,7 @@ public final class AllResultsActivity extends Activity {
         content.addView(Ui.text(this,
                 "Static observation, not runtime proof. Rows are ordered by score, not by "
                         + "certainty; a low score is not a guarantee of safety.",
-                11, Ui.MUTED, false));
+                11, Ui.getMuted(), false));
     }
 
     private View summaryCard() {
@@ -158,26 +158,26 @@ public final class AllResultsActivity extends Activity {
 
         card.addView(Ui.text(this, rows.size()
                         + (rows.size() == 1 ? " app scanned" : " apps scanned"),
-                20, Ui.TEXT, true));
+                20, Ui.getText(), true));
         TextView order = Ui.text(this, "Highest score first. Tap an app to read its findings.",
-                12, Ui.MUTED, false);
+                12, Ui.getMuted(), false);
         order.setPadding(0, Ui.dp(this, 4), 0, Ui.dp(this, 12));
         card.addView(order);
 
         LinearLayout chips = Ui.row(this);
-        if (critical > 0) addBandChip(chips, critical + " critical", Ui.ACCENT, Ui.surfaceGap(this));
+        if (critical > 0) addBandChip(chips, critical + " critical", Ui.getAccent(), Ui.surfaceGap(this));
         if (high > 0) addBandChip(chips, high + " high", Ui.severityColor("high"), 0);
         if (suspicious > 0) addBandChip(chips, suspicious + " suspicious",
                 Ui.severityColor("medium"), 0);
         if (low > 0) addBandChip(chips, low + " low", Ui.severityColor("low"), 0);
-        if (benign > 0) addBandChip(chips, benign + " quiet", Ui.OK, 0);
+        if (benign > 0) addBandChip(chips, benign + " quiet", Ui.COLOR_OK, 0);
         if (chips.getChildCount() > 0) card.addView(chips);
 
         if (inconclusive > 0) {
             TextView note = Ui.text(this, inconclusive + (inconclusive == 1
                             ? " app had" : " apps had")
                             + " limited inspection; those scores are low confidence.",
-                    11, Ui.MUTED, false);
+                    11, Ui.getMuted(), false);
             note.setPadding(0, Ui.dp(this, 10), 0, 0);
             card.addView(note);
         }
@@ -203,8 +203,8 @@ public final class AllResultsActivity extends Activity {
 
         LinearLayout texts = Ui.column(this);
         texts.setPadding(Ui.dp(this, 12), 0, Ui.dp(this, 8), 0);
-        texts.addView(Ui.text(this, label(row.report), 15, Ui.TEXT, true));
-        TextView pkg = Ui.text(this, row.report.app.packageName, 10, Ui.MUTED, false);
+        texts.addView(Ui.text(this, label(row.report), 15, Ui.getText(), true));
+        TextView pkg = Ui.text(this, row.report.app.packageName, 10, Ui.getMuted(), false);
         pkg.setTypeface(Typeface.MONOSPACE);
         texts.addView(pkg);
 
@@ -213,7 +213,7 @@ public final class AllResultsActivity extends Activity {
         if (row.report.score.inconclusive || row.report.detailsOnly) {
             meta += " \u00B7 limited inspection";
         }
-        TextView metaView = Ui.text(this, meta, 11, Ui.MUTED, false);
+        TextView metaView = Ui.text(this, meta, 11, Ui.getMuted(), false);
         metaView.setPadding(0, Ui.dp(this, 3), 0, 0);
         texts.addView(metaView);
         line.addView(texts, new LinearLayout.LayoutParams(0,
@@ -246,12 +246,12 @@ public final class AllResultsActivity extends Activity {
 
     private View unavailableCard() {
         LinearLayout card = Ui.card(this);
-        card.addView(Ui.text(this, "Results unavailable", 18, Ui.TEXT, true));
+        card.addView(Ui.text(this, "Results unavailable", 18, Ui.getText(), true));
         card.addView(Ui.text(this,
                 "Batch reports are kept in memory, and Android cleared them when it stopped "
                         + "ANBU. The apps were not judged by this screen. Scan them again for "
                         + "fresh results.",
-                12, Ui.MUTED, false));
+                12, Ui.getMuted(), false));
 
         Ui.addSpace(card, 16);
         Button done = Ui.button(this, "Done", true);
@@ -263,11 +263,11 @@ public final class AllResultsActivity extends Activity {
 
     private View emptyCard() {
         LinearLayout card = Ui.card(this);
-        card.addView(Ui.text(this, "Nothing scanned", 18, Ui.TEXT, true));
+        card.addView(Ui.text(this, "Nothing scanned", 18, Ui.getText(), true));
         card.addView(Ui.text(this,
                 "This batch finished without a report. Pick an app on the home screen and "
                         + "scan it again.",
-                12, Ui.MUTED, false));
+                12, Ui.getMuted(), false));
 
         Ui.addSpace(card, 16);
         Button done = Ui.button(this, "Done", true);

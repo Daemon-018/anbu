@@ -69,7 +69,7 @@ public final class InstallActivity extends Activity {
 
     private View buildRoot() {
         LinearLayout root = Ui.column(this);
-        root.setBackgroundColor(Ui.BG);
+        root.setBackgroundColor(Ui.getBg());
         root.setFitsSystemWindows(true);
 
         content = Ui.column(this);
@@ -86,7 +86,7 @@ public final class InstallActivity extends Activity {
         LinearLayout loading = Ui.column(this);
         loading.setGravity(Gravity.CENTER);
         loading.setPadding(0, 0, 0, 0);
-        TextView msg = Ui.text(this, "Preparing archive...", 16, Ui.TEXT, true);
+        TextView msg = Ui.text(this, "Preparing archive...", 16, Ui.getText(), true);
         loading.addView(msg);
         root.addView(loading, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -127,43 +127,46 @@ public final class InstallActivity extends Activity {
         // Header
         LinearLayout header = Ui.row(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        TextView title = Ui.text(this, set.displayName, 22, Ui.TEXT, true);
+        TextView title = Ui.text(this, set.displayName, 22, Ui.getText(), true);
         header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         
         String band = report.score.band;
         TextView bandChip = Ui.chip(this, Ui.bandLabel(band), Ui.bandColor(band));
         header.addView(bandChip);
         content.addView(header);
+        Ui.slideUp(header);
 
         Ui.addSpace(content, 20);
 
         // Verdict Card
         LinearLayout verdict = Ui.card(this);
-        TextView vTitle = Ui.text(this, "Verdict", 14, Ui.MUTED, false);
+        TextView vTitle = Ui.text(this, "Verdict", 14, Ui.getMuted(), false);
         verdict.addView(vTitle);
         Ui.addSpace(verdict, 8);
         TextView vMsg = Ui.text(this, Ui.bandLabel(band), 20, Ui.bandColor(band), true);
         verdict.addView(vMsg);
         content.addView(verdict);
+        Ui.slideUp(verdict);
 
         Ui.addSpace(content, 20);
 
         // Findings Card
         if (!report.findings.isEmpty()) {
             LinearLayout findings = Ui.card(this);
-            findings.addView(Ui.text(this, "Findings", 14, Ui.MUTED, false));
+            findings.addView(Ui.text(this, "Findings", 14, Ui.getMuted(), false));
             Ui.addSpace(findings, 8);
             for (Model.Finding f : report.findings) {
                 LinearLayout row = Ui.row(this);
                 TextView sev = Ui.chip(this, f.severity, Ui.severityColor(f.severity));
                 row.addView(sev);
                 Ui.addSpace(row, 8);
-                TextView desc = Ui.text(this, f.title, 14, Ui.TEXT, false);
+                TextView desc = Ui.text(this, f.title, 14, Ui.getText(), false);
                 row.addView(desc);
                 findings.addView(row);
                 Ui.addSpace(findings, 6);
             }
             content.addView(findings);
+            Ui.slideUp(findings);
             Ui.addSpace(content, 20);
         }
 
@@ -207,6 +210,7 @@ public final class InstallActivity extends Activity {
             actions.addView(override);
         }
         content.addView(actions);
+        Ui.slideUp(actions);
     }
 
     private void startInstall() {

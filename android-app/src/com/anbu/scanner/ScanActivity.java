@@ -79,16 +79,16 @@ public final class ScanActivity extends Activity {
 
     private View build() {
         LinearLayout root = Ui.column(this);
-        root.setBackgroundColor(Ui.BG);
+        root.setBackgroundColor(Ui.getBg());
         root.setFitsSystemWindows(true);
 
         LinearLayout top = Ui.row(this);
         top.setPadding(Ui.dp(this, 14), Ui.dp(this, 10), Ui.dp(this, 18), Ui.dp(this, 4));
-        TextView back = Ui.text(this, "\u2039 Back", 14, Ui.MUTED, true);
+        TextView back = Ui.text(this, "\u2039 Back", 14, Ui.getMuted(), true);
         back.setPadding(Ui.dp(this, 6), Ui.dp(this, 10), Ui.dp(this, 12), Ui.dp(this, 10));
         back.setOnClickListener(v -> cancelAndLeave());
         top.addView(back);
-        top.addView(Ui.text(this, "Scan", 18, Ui.TEXT, true),
+        top.addView(Ui.text(this, "Scan", 18, Ui.getText(), true),
                 new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         root.addView(top);
 
@@ -97,23 +97,23 @@ public final class ScanActivity extends Activity {
         body.setPadding(p, Ui.dp(this, 6), p, p);
 
         progressCard = Ui.card(this);
-        headline = Ui.text(this, "Preparing scan", 19, Ui.TEXT, true);
-        subline = Ui.text(this, "Reading what Android exposes for this app.", 12, Ui.MUTED, false);
+        headline = Ui.text(this, "Preparing scan", 19, Ui.getText(), true);
+        subline = Ui.text(this, "Reading what Android exposes for this app.", 12, Ui.getMuted(), false);
         subline.setPadding(0, Ui.dp(this, 4), 0, Ui.dp(this, 14));
         progressCard.addView(headline);
         progressCard.addView(subline);
 
-        counter = Ui.text(this, "", 12, Ui.MUTED, false);
+        counter = Ui.text(this, "", 12, Ui.getMuted(), false);
         counter.setPadding(0, 0, 0, Ui.dp(this, 8));
         progressCard.addView(counter);
 
         bar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         bar.setIndeterminate(true);
-        bar.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(Ui.ACCENT));
+        bar.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(Ui.getAccent()));
         progressCard.addView(bar, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 4)));
 
-        stageText = Ui.text(this, "Starting\u2026", 14, Ui.TEXT, true);
+        stageText = Ui.text(this, "Starting\u2026", 14, Ui.getText(), true);
         stageText.setPadding(0, Ui.dp(this, 14), 0, Ui.dp(this, 6));
         progressCard.addView(stageText);
 
@@ -129,16 +129,16 @@ public final class ScanActivity extends Activity {
         Ui.addSpace(progressCard, 12);
         progressCard.addView(Ui.text(this,
                 "A scan reads names and strings; it cannot see what an app does at runtime.",
-                11, Ui.MUTED, false));
+                11, Ui.getMuted(), false));
         body.addView(progressCard);
 
         interruptedCard = Ui.card(this);
         interruptedCard.setVisibility(View.GONE);
-        interruptedCard.addView(Ui.text(this, "Scan interrupted", 19, Ui.TEXT, true));
+        interruptedCard.addView(Ui.text(this, "Scan interrupted", 19, Ui.getText(), true));
         interruptedCard.addView(Ui.text(this,
                 "Android stopped ANBU before the report was finished. Nothing was kept, so "
                         + "the app has not been half-judged. Run the scan again to get a result.",
-                12, Ui.MUTED, false));
+                12, Ui.getMuted(), false));
         Ui.addSpace(interruptedCard, 16);
         Button again = Ui.button(this, "Scan again", true);
         again.setOnClickListener(v -> restart());
@@ -206,7 +206,7 @@ public final class ScanActivity extends Activity {
     }
 
     private void addStage(String label) {
-        TextView row = Ui.text(this, "\u25CB  " + label, 13, Ui.MUTED, false);
+        TextView row = Ui.text(this, "\u25CB  " + label, 13, Ui.getMuted(), false);
         row.setTag(label);
         row.setPadding(0, Ui.dp(this, 4), 0, Ui.dp(this, 4));
         stageBox.addView(row);
@@ -218,13 +218,13 @@ public final class ScanActivity extends Activity {
             String label = String.valueOf(row.getTag());
             if (label.equals(current)) {
                 row.setText("\u25CF  " + label);
-                row.setTextColor(Ui.TEXT);
+                row.setTextColor(Ui.getText());
             } else if (isBefore(label, current)) {
                 row.setText("\u2713  " + label);
-                row.setTextColor(Ui.OK);
+                row.setTextColor(Ui.COLOR_OK);
             } else {
                 row.setText("\u25CB  " + label);
-                row.setTextColor(Ui.MUTED);
+                row.setTextColor(Ui.getMuted());
             }
         }
     }

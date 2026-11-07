@@ -17,6 +17,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -37,9 +38,9 @@ public final class InstallActivity extends Activity {
     public static final int REQ_OPEN_APK = 9101;
     public static final String EXTRA_APK_URI = "com.anbu.scanner.APK_URI";
 
-    private InstallSet.Result set;
-    private Model.Report report;
-    private LinearLayout content;
+    public InstallSet.Result set;
+    public Model.Report report;
+    public LinearLayout content;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -82,12 +83,26 @@ public final class InstallActivity extends Activity {
         root.addView(scroll, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
-        // Loading state
+        // Loading state: The "Deassemble" animation container
         LinearLayout loading = Ui.column(this);
         loading.setGravity(Gravity.CENTER);
-        loading.setPadding(0, 0, 0, 0);
-        TextView msg = Ui.text(this, "Preparing archive...", 16, Ui.getText(), true);
+        
+        // Center Icon
+        ImageView iconView = new ImageView(this);
+        iconView.setLayoutParams(new LinearLayout.LayoutParams(Ui.dp(this, 120), Ui.dp(this, 120)));
+        iconView.setPadding(Ui.dp(this, 10), Ui.dp(this, 10), Ui.dp(this, 10), Ui.dp(this, 10));
+        iconView.setElevation(20f);
+        // Use a default image if R is missing during compilation
+        loading.addView(iconView);
+        this.scanIcon = iconView;
+
+        // Progress Text
+        TextView msg = Ui.text(this, "Initializing...", 16, Ui.getText(), true);
+        msg.setGravity(Gravity.CENTER);
+        msg.setPadding(0, Ui.dp(this, 24), 0, 0);
         loading.addView(msg);
+        this.loadingText = msg;
+
         root.addView(loading, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         loading.setId(View.generateViewId());
@@ -96,30 +111,42 @@ public final class InstallActivity extends Activity {
         return root;
     }
 
-    private View loadingView;
+    public View loadingView;
+    public ImageView scanIcon;
+    public TextView loadingText;
 
     private void prepareAndScan(Uri uri) {
-        new Thread(() -> {
-            InstallSet.Result res = InstallSet.prepare(this, uri);
-            if (res.error != null) {
-                runOnUiThread(() -> {
-                    showError(res.error);
-                    finish();
-                });
-                return;
-            }
-
-            Model.Report rep = ScanEngine.scanFiles(this, res.apks, res.primary, null);
-
-            runOnUiThread(() -> {
-                this.set = res;
-                this.report = rep;
-                renderDecision();
-            });
-        }, "anbu-gatekeeper").start();
+        new Thread(new InstallHelpers.ScanWorker(this, uri), "anbu-gatekeeper").start();
     }
 
-    private void renderDecision() {
+// Remove the now redundant static inner classes from InstallActivity
+
+
+    public void animateShatter() {
+        if (scanIcon == null) return;
+        scanIcon.animate()
+                .scaleX(0.8f)
+                .scaleY(0.8f)
+                .setDuration(300)
+                .withEndAction(() -> {
+                    scanIcon.animate().scaleX(1.0f).scaleY(1.0f).setDuration(200).start();
+                })
+                .start();
+    }
+
+    public void animatePulse() {
+        if (scanIcon == null) return;
+        scanIcon.animate()
+                .scaleX(1.1f)
+                .scaleY(1.1f)
+                .setDuration(100)
+                .withEndAction(() -> {
+                    scanIcon.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start();
+                })
+                .start();
+    }
+
+    public void renderDecision() {
         if (loadingView != null) loadingView.setVisibility(View.GONE);
         content.setVisibility(View.VISIBLE);
         content.removeAllViews();
@@ -280,7 +307,7 @@ public final class InstallActivity extends Activity {
         }
     }
 
-    private void showError(String msg) {
+    public void showError(String msg) {
         new AlertDialog.Builder(this)
                 .setTitle("Error")
                 .setMessage(msg)

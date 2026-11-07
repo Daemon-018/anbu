@@ -13,6 +13,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -53,75 +54,92 @@ public final class MainActivity extends Activity {
         root.setBackgroundColor(Ui.getBg());
         root.setFitsSystemWindows(true);
 
-        LinearLayout header = Ui.column(this);
-        int hp = Ui.dp(this, 20);
-        header.setPadding(hp, Ui.dp(this, 18), hp, Ui.dp(this, 6));
-        header.addView(Ui.text(this, "ANBU", 30, Ui.getText(), true));
-        header.addView(Ui.text(this,
-                "On-device app auditor \u00B7 nothing leaves this phone", 12, Ui.getMuted(), false));
-        root.addView(header);
+        // --- Hero Section ---
+        LinearLayout hero = Ui.column(this);
+        hero.setGravity(Gravity.CENTER);
+        hero.setPadding(0, Ui.dp(this, 30), 0, Ui.dp(this, 20));
 
+        ImageView logo = new ImageView(this);
+        logo.setLayoutParams(new LinearLayout.LayoutParams(Ui.dp(this, 80), Ui.dp(this, 80)));
+        logo.setPadding(Ui.dp(this, 10), Ui.dp(this, 10), Ui.dp(this, 10), Ui.dp(this, 10));
+        logo.setElevation(10f);
+        // Use a default image if R is missing during compilation
+        hero.addView(logo);
+
+        TextView title = Ui.text(this, "ANBU", 32, Ui.getText(), true);
+        title.setGravity(Gravity.CENTER);
+        hero.addView(title);
+
+        TextView subtitle = Ui.text(this, "On-device app auditor", 14, Ui.getMuted(), false);
+        subtitle.setGravity(Gravity.CENTER);
+        hero.addView(subtitle);
+        root.addView(hero);
+
+        // --- Control Section ---
         LinearLayout controls = Ui.column(this);
-        int cp = Ui.dp(this, 18);
-        controls.setPadding(cp, Ui.dp(this, 8), cp, Ui.dp(this, 8));
+        int cp = Ui.dp(this, 20);
+        controls.setPadding(cp, 0, cp, 0);
 
-        LinearLayout topRow = Ui.row(this);
+        // Filter bar
         filter = new EditText(this);
-        filter.setHint("Filter installed apps");
+        filter.setHint("Search apps...");
         filter.setSingleLine(true);
         filter.setTextSize(14);
         filter.setTextColor(Ui.getText());
         filter.setHintTextColor(Ui.getMuted());
-        filter.setBackground(Ui.background(this, Ui.getSurface(), 12, Ui.getLine()));
-        int fp = Ui.dp(this, 14);
-        filter.setPadding(fp, Ui.dp(this, 10), fp, Ui.dp(this, 10));
+        filter.setBackground(Ui.background(this, Ui.getSurface(), 24, Ui.getLine()));
+        int fp = Ui.dp(this, 16);
+        filter.setPadding(fp, Ui.dp(this, 12), fp, Ui.dp(this, 12));
         filter.addTextChangedListener(new FilterWatcher(() -> {
             query = filter.getText() == null
                     ? ""
                     : filter.getText().toString().trim().toLowerCase(Locale.US);
             renderList();
         }));
-        topRow.addView(filter, new LinearLayout.LayoutParams(0,
-                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        controls.addView(filter);
 
-        Button openBtn = Ui.button(this, "Open APK...", false);
+        // Action Grid
+        LinearLayout actionGrid = Ui.row(this);
+        actionGrid.setPadding(0, Ui.dp(this, 16), 0, 0);
+
+        Button openBtn = Ui.button(this, "Open APK", false);
         openBtn.setOnClickListener(v -> openApkPicker());
-        topRow.addView(openBtn, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        controls.addView(topRow);
-
-        LinearLayout actions = Ui.row(this);
-        actions.setPadding(0, Ui.dp(this, 10), 0, 0);
-        android.widget.Button scanAll = Ui.button(this, "Scan all user apps", true);
-        scanAll.setOnClickListener(v -> scanAll());
-        actions.addView(scanAll, new LinearLayout.LayoutParams(0,
+        actionGrid.addView(openBtn, new LinearLayout.LayoutParams(0, 
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
         View gap = new View(this);
-        actions.addView(gap, new LinearLayout.LayoutParams(Ui.dp(this, 8), 1));
+        gap.setLayoutParams(new LinearLayout.LayoutParams(Ui.dp(this, 12), 1));
+        actionGrid.addView(gap);
 
+        android.widget.Button scanAll = Ui.button(this, "Scan All", true);
+        scanAll.setOnClickListener(v -> scanAll());
+        actionGrid.addView(scanAll, new LinearLayout.LayoutParams(0, 
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        controls.addView(actionGrid);
+
+        // System Toggle
+        LinearLayout toggleRow = Ui.row(this);
+        toggleRow.setGravity(Gravity.END);
         systemToggle = Ui.button(this, systemLabel(), false);
         systemToggle.setOnClickListener(v -> {
             showSystem = !showSystem;
             systemToggle.setText(systemLabel());
             renderList();
         });
-        actions.addView(systemToggle, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        controls.addView(actions);
+        toggleRow.addView(systemToggle);
+        controls.addView(toggleRow);
 
         listStatus = Ui.text(this, "Reading installed packages\u2026", 12, Ui.getMuted(), false);
-        listStatus.setPadding(0, Ui.dp(this, 14), 0, Ui.dp(this, 6));
+        listStatus.setPadding(0, Ui.dp(this, 14), 0, Ui.dp(this, 10));
         controls.addView(listStatus);
         root.addView(controls);
 
         list = Ui.column(this);
-        list.setPadding(cp, 0, cp, Ui.dp(this, 24));
+        list.setPadding(cp, 0, cp, Ui.dp(this, 30));
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
-        scroll.addView(list, new ScrollView.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        scroll.addView(list);
         root.addView(scroll, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         return root;
@@ -228,12 +246,12 @@ public final class MainActivity extends Activity {
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
 
-        row.addView(Ui.image(this, app.icon, 44));
+        row.addView(Ui.image(this, app.icon, 48));
 
         LinearLayout texts = Ui.column(this);
-        texts.setPadding(Ui.dp(this, 12), 0, Ui.dp(this, 8), 0);
+        texts.setPadding(Ui.dp(this, 16), 0, Ui.dp(this, 8), 0);
         String label = app.label == null || app.label.isEmpty() ? app.packageName : app.label;
-        texts.addView(Ui.text(this, label, 15, Ui.getText(), true));
+        texts.addView(Ui.text(this, label, 16, Ui.getText(), true));
         texts.addView(Ui.text(this, app.packageName, 11, Ui.getMuted(), false));
 
         String meta = app.versionName == null || app.versionName.isEmpty()
@@ -243,7 +261,7 @@ public final class MainActivity extends Activity {
 
         row.addView(texts, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        row.addView(Ui.text(this, "\u203A", 26, Ui.getMuted(), false));
+        row.addView(Ui.text(this, "\u203A", 24, Ui.getMuted(), false));
 
         row.setOnClickListener(v -> {
             Intent intent = new Intent(this, ScanActivity.class);

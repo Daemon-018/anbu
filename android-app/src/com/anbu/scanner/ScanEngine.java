@@ -4,8 +4,10 @@ import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.os.Build;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.InputStream;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
@@ -32,6 +34,7 @@ import java.util.zip.ZipFile;
 public final class ScanEngine {
 
     private static final int GET_SIGNATURES = 0x00000040;
+    private static final int GET_SIGNING_CERTIFICATES = 0x08000000;
 
     /** Packer fingerprints from src/anbu/data/signals.json (lower-case needles). */
     private static final String[][] PACKERS = {
@@ -118,7 +121,8 @@ public final class ScanEngine {
                     | PackageManager.GET_SERVICES
                     | PackageManager.GET_RECEIVERS
                     | PackageManager.GET_PROVIDERS
-                    | GET_SIGNATURES;
+                    | GET_SIGNATURES
+                    | GET_SIGNING_CERTIFICATES;
             info = pm.getPackageInfo(entry.packageName, flags);
         } catch (PackageManager.NameNotFoundException e) {
             report.score.value = 0;
@@ -133,10 +137,14 @@ public final class ScanEngine {
         }
 
         ctx.info = info;
-        readManifest(context, info, ctx);
+        readManifest(context, info, ctx, false);
 
         if (progress != null) progress.step("Inspecting code", "Limited to what the OS exposes");
-        readApk(ctx);
+        List<String> sources = new ArrayList<>();
+        if (info.applicationInfo != null && info.applicationInfo.sourceDir != null) {
+            sources.add(info.applicationInfo.sourceDir);
+        }
+        readApk(ctx, sources);
 
         if (progress != null) progress.step("Applying rules", "Permission, API and manifest signals");
         detect(ctx, report);
@@ -147,9 +155,115 @@ public final class ScanEngine {
         return report;
     }
 
+    /**
+     * Scans an APK (or the primary APK of a split bundle) straight from a file the user
+     * chose, before it has been installed. The archive is parsed by the platform, so the
+     * manifest, permissions, components and signing certificate come from the same parser
+     * the installer will use.
+     */
+    public static Model.Report scanFile(Context context, File apk, Progress progress) {
+        List<File> apks = new ArrayList<>();
+        if (apk != null) apks.add(apk);
+        return scanFiles(context, apks, apk, progress);
+    }
+
+    /**
+     * Scans every APK in a bundle. {@code primary} supplies the package identity and is
+     * usually the base APK; the remaining files contribute code and asset signals. An
+     * archive that cannot be parsed is reported as unreadable rather than clean.
+     */
+    public static Model.Report scanFiles(Context context, List<File> apks, File primary,
+                                         Progress progress) {
+        if (primary == null || !primary.isFile()) {
+            return unreadable("Unreadable archive",
+                    "The selected file could not be read from the cache.");
+        }
+        String display = primary.getName();
+        PackageManager pm = context.getPackageManager();
+
+        if (progress != null) progress.step("Reading manifest", display);
+        PackageInfo info;
+        try {
+            int flags = PackageManager.GET_PERMISSIONS
+                    | PackageManager.GET_ACTIVITIES
+                    | PackageManager.GET_SERVICES
+                    | PackageManager.GET_RECEIVERS
+                    | PackageManager.GET_PROVIDERS
+                    | GET_SIGNATURES
+                    | GET_SIGNING_CERTIFICATES;
+            info = pm.getPackageArchiveInfo(primary.getAbsolutePath(), flags);
+        } catch (RuntimeException e) {
+            info = null;
+        }
+        if (info == null) {
+            return unreadable(display,
+                    "The archive could not be parsed as an Android package. It may be corrupt, "
+                            + "truncated, or not actually an APK.");
+        }
+
+        // getPackageArchiveInfo does not always fill in sourceDir; label/icon resolution
+        // needs it to point at the cached copy.
+        if (info.applicationInfo != null) {
+            info.applicationInfo.sourceDir = primary.getAbsolutePath();
+            info.applicationInfo.publicSourceDir = primary.getAbsolutePath();
+        }
+
+        Model.AppEntry entry = new Model.AppEntry(
+                info.packageName == null ? "" : info.packageName);
+        entry.versionName = info.versionName;
+        entry.label = display;
+        if (info.applicationInfo != null) {
+            try {
+                CharSequence label = pm.getApplicationLabel(info.applicationInfo);
+                if (label != null && label.length() > 0) entry.label = label.toString();
+            } catch (RuntimeException ignored) {
+                // Keep the file name when the archive's resources cannot be resolved.
+            }
+            try {
+                entry.icon = pm.getApplicationIcon(info.applicationInfo);
+            } catch (RuntimeException ignored) {
+                entry.icon = null;
+            }
+        }
+
+        Model.Report report = new Model.Report(entry);
+        Ctx ctx = new Ctx();
+        ctx.info = info;
+        readManifest(context, info, ctx, true);
+
+        if (progress != null) progress.step("Inspecting code", "Static strings from every APK");
+        List<String> sources = new ArrayList<>();
+        for (File apk : apks) {
+            if (apk != null) sources.add(apk.getAbsolutePath());
+        }
+        readApk(ctx, sources);
+
+        if (progress != null) progress.step("Applying rules", "Permission, API and manifest signals");
+        detect(ctx, report);
+
+        score(ctx, report);
+        report.detailsOnly = !ctx.codeRead;
+        report.scannedAt = System.currentTimeMillis();
+        return report;
+    }
+
+    private static Model.Report unreadable(String label, String note) {
+        Model.AppEntry entry = new Model.AppEntry("");
+        entry.label = label == null || label.isEmpty() ? "Unreadable archive" : label;
+        Model.Report report = new Model.Report(entry);
+        report.score.value = 0;
+        report.score.band = "likely_benign";
+        report.score.confidence = "low";
+        report.score.notes.add(note);
+        report.detailsOnly = true;
+        report.scannedAt = System.currentTimeMillis();
+        return report;
+    }
+
     // ---------------------------------------------------------------- manifest
 
-    private static void readManifest(Context context, PackageInfo info, Ctx ctx) {
+    private static void readManifest(Context context, PackageInfo info, Ctx ctx,
+                                     boolean fileScan) {
         if (info.requestedPermissions != null) {
             for (String permission : info.requestedPermissions) {
                 if (permission != null) ctx.permissions.add(permission);
@@ -200,9 +314,12 @@ public final class ScanEngine {
         }
 
         readCertificate(info, ctx);
-        ctx.smsReceiver = hasReceiver(context, info.packageName,
+        // Intent filters are not visible for an uninstalled archive, so a file scan cannot
+        // ask the broadcast resolver which package receives SMS. Skip the query instead of
+        // producing a false negative for an installed app of the same name.
+        ctx.smsReceiver = !fileScan && hasReceiver(context, info.packageName,
                 "android.provider.Telephony.SMS_RECEIVED");
-        ctx.self = context.getPackageName().equals(info.packageName);
+        ctx.self = !fileScan && context.getPackageName().equals(info.packageName);
     }
 
     /**
@@ -227,11 +344,24 @@ public final class ScanEngine {
     }
 
     private static void readCertificate(PackageInfo info, Ctx ctx) {
-        if (info.signatures == null || info.signatures.length == 0) return;
+        android.content.pm.Signature[] signatures = null;
+        if (Build.VERSION.SDK_INT >= 28 && info.signingInfo != null) {
+            try {
+                signatures = info.signingInfo.hasMultipleSigners()
+                        ? info.signingInfo.getApkContentsSigners()
+                        : info.signingInfo.getSigningCertificateHistory();
+            } catch (RuntimeException ignored) {
+                // Fall back to the legacy field below.
+            }
+        }
+        if ((signatures == null || signatures.length == 0) && info.signatures != null) {
+            signatures = info.signatures;
+        }
+        if (signatures == null || signatures.length == 0) return;
         try {
             CertificateFactory factory = CertificateFactory.getInstance("X.509");
             X509Certificate cert = (X509Certificate) factory.generateCertificate(
-                    new ByteArrayInputStream(info.signatures[0].toByteArray()));
+                    new ByteArrayInputStream(signatures[0].toByteArray()));
             String subject = cert.getSubjectDN() == null ? "" : cert.getSubjectDN().getName();
             ctx.certDebug = subject.contains("CN=Android Debug") || subject.contains("O=Android");
             ctx.certExpired = cert.getNotAfter() != null && cert.getNotAfter().before(new Date());
@@ -243,72 +373,71 @@ public final class ScanEngine {
 
     // --------------------------------------------------------------------- apk
 
-    private static void readApk(Ctx ctx) {
-        if (ctx.info == null || ctx.info.applicationInfo == null) return;
-        String source = ctx.info.applicationInfo.sourceDir;
-        if (source == null) return;
-        ZipFile zip = null;
-        try {
-            zip = new ZipFile(source);
-            int dexCount = 0;
-            int dexRead = 0;
-            StringBuilder strings = new StringBuilder();
-            List<ZipEntry> entries = new ArrayList<>();
-            java.util.Enumeration<? extends ZipEntry> e = zip.entries();
-            while (e.hasMoreElements()) entries.add(e.nextElement());
+    private static void readApk(Ctx ctx, List<String> sources) {
+        if (sources == null || sources.isEmpty()) return;
+        int dexCount = 0;
+        int dexRead = 0;
+        StringBuilder strings = new StringBuilder();
 
-            for (ZipEntry entry : entries) {
-                String name = entry.getName();
-                if (name == null) continue;
-                if (name.matches("classes[0-9]*\\.dex")) {
-                    dexCount++;
-                    String text = readStrings(zip, entry, 16 * 1024 * 1024);
-                    if (text != null) {
-                        dexRead++;
-                        strings.append(text).append('\n');
-                    }
-                } else if (name.startsWith("assets/") && !entry.isDirectory()) {
-                    String lower = name.toLowerCase(java.util.Locale.US);
-                    boolean payloadName = lower.endsWith(".dex") || lower.endsWith(".jar")
-                            || lower.endsWith(".apk") || lower.endsWith(".zip")
-                            || lower.endsWith(".bin") || lower.endsWith(".enc")
-                            || lower.endsWith(".dat");
-                    if (payloadName && entry.getSize() != 0) {
-                        ctx.assetPayload = true;
-                        ctx.assetNames.add(name);
-                    }
-                    if (entry.getSize() > 32 * 1024 && entry.getSize() <= 32L * 1024 * 1024) {
-                        byte[] head = readHead(zip, entry, 64 * 1024);
-                        if (head != null && shannon(head) >= 7.2) {
-                            ctx.highEntropyAsset = true;
+        for (String source : sources) {
+            if (source == null) continue;
+            ZipFile zip = null;
+            try {
+                zip = new ZipFile(source);
+                List<ZipEntry> entries = new ArrayList<>();
+                java.util.Enumeration<? extends ZipEntry> e = zip.entries();
+                while (e.hasMoreElements()) entries.add(e.nextElement());
+
+                for (ZipEntry entry : entries) {
+                    String name = entry.getName();
+                    if (name == null) continue;
+                    if (name.matches("classes[0-9]*\\.dex")) {
+                        dexCount++;
+                        String text = readStrings(zip, entry, 16 * 1024 * 1024);
+                        if (text != null) {
+                            dexRead++;
+                            strings.append(text).append('\n');
+                        }
+                    } else if (name.startsWith("assets/") && !entry.isDirectory()) {
+                        String lower = name.toLowerCase(java.util.Locale.US);
+                        boolean payloadName = lower.endsWith(".dex") || lower.endsWith(".jar")
+                                || lower.endsWith(".apk") || lower.endsWith(".zip")
+                                || lower.endsWith(".bin") || lower.endsWith(".enc")
+                                || lower.endsWith(".dat");
+                        if (payloadName && entry.getSize() != 0) {
+                            ctx.assetPayload = true;
                             ctx.assetNames.add(name);
+                        }
+                        if (entry.getSize() > 32 * 1024 && entry.getSize() <= 32L * 1024 * 1024) {
+                            byte[] head = readHead(zip, entry, 64 * 1024);
+                            if (head != null && shannon(head) >= 7.2) {
+                                ctx.highEntropyAsset = true;
+                                ctx.assetNames.add(name);
+                            }
                         }
                     }
                 }
-            }
-
-            ctx.code = strings.toString();
-            ctx.codeLower = ctx.code.toLowerCase(java.util.Locale.US);
-            ctx.codeUpper = ctx.code.toUpperCase(java.util.Locale.US);
-            ctx.codeRead = dexRead > 0;
-            findPackers(ctx);
-            ctx.coverage = dexCount == 0 ? 0d : (double) dexRead / (double) dexCount;
-            ctx.dexCount = dexCount;
-            ctx.dexRead = dexRead;
-            if (ctx.code.isEmpty()) {
-                // Some packages keep code in splits or hide it; still inspect the APK bytes.
-                ctx.code = ctx.codeLower = "";
-            }
-        } catch (Exception e) {
-            ctx.readError = e.getClass().getSimpleName();
-        } finally {
-            if (zip != null) {
-                try {
-                    zip.close();
-                } catch (Exception ignored) {
+            } catch (Exception e) {
+                // Keep whatever the readable members of a split bundle contributed.
+                ctx.readError = e.getClass().getSimpleName();
+            } finally {
+                if (zip != null) {
+                    try {
+                        zip.close();
+                    } catch (Exception ignored) {
+                    }
                 }
             }
         }
+
+        ctx.code = strings.toString();
+        ctx.codeLower = ctx.code.toLowerCase(java.util.Locale.US);
+        ctx.codeUpper = ctx.code.toUpperCase(java.util.Locale.US);
+        ctx.codeRead = dexRead > 0;
+        findPackers(ctx);
+        ctx.coverage = dexCount == 0 ? 0d : (double) dexRead / (double) dexCount;
+        ctx.dexCount = dexCount;
+        ctx.dexRead = dexRead;
     }
 
     private static void findPackers(Ctx ctx) {

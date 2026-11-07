@@ -1,0 +1,282 @@
+package com.anbu.scanner;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.pm.PackageInstaller;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.List;
+
+/**
+ * Gatekeeper installer: Scan first, then decide.
+ * Handles ACTION_VIEW/SEND for APKs and bundles.
+ */
+public final class InstallActivity extends Activity {
+
+    public static final int REQ_OPEN_APK = 9101;
+    public static final String EXTRA_APK_URI = "com.anbu.scanner.APK_URI";
+
+    private InstallSet.Result set;
+    private Model.Report report;
+    private LinearLayout content;
+
+    @Override
+    protected void onCreate(Bundle state) {
+        super.onCreate(state);
+        setContentView(buildRoot());
+
+        Uri uri = null;
+        Intent intent = getIntent();
+        if (intent == null) return;
+
+        if ("android.intent.action.SEND".equals(intent.getAction())) {
+            uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+        } else if ("android.intent.action.VIEW".equals(intent.getAction())) {
+            uri = intent.getData();
+        } else {
+            uri = intent.getParcelableExtra(EXTRA_APK_URI);
+        }
+
+        if (uri == null) {
+            Toast.makeText(this, "No APK provided", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        prepareAndScan(uri);
+    }
+
+    private View buildRoot() {
+        LinearLayout root = Ui.column(this);
+        root.setBackgroundColor(Ui.BG);
+        root.setFitsSystemWindows(true);
+
+        content = Ui.column(this);
+        content.setPadding(Ui.dp(this, 18), Ui.dp(this, 18), Ui.dp(this, 18), Ui.dp(this, 18));
+        content.setVisibility(View.GONE);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.addView(content);
+        root.addView(scroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        // Loading state
+        LinearLayout loading = Ui.column(this);
+        loading.setGravity(Gravity.CENTER);
+        loading.setPadding(0, 0, 0, 0);
+        TextView msg = Ui.text(this, "Preparing archive...", 16, Ui.TEXT, true);
+        loading.addView(msg);
+        root.addView(loading, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        loading.setId(View.generateViewId());
+        this.loadingView = loading;
+
+        return root;
+    }
+
+    private View loadingView;
+
+    private void prepareAndScan(Uri uri) {
+        new Thread(() -> {
+            InstallSet.Result res = InstallSet.prepare(this, uri);
+            if (res.error != null) {
+                runOnUiThread(() -> {
+                    showError(res.error);
+                    finish();
+                });
+                return;
+            }
+
+            Model.Report rep = ScanEngine.scanFiles(this, res.apks, res.primary, null);
+
+            runOnUiThread(() -> {
+                this.set = res;
+                this.report = rep;
+                renderDecision();
+            });
+        }, "anbu-gatekeeper").start();
+    }
+
+    private void renderDecision() {
+        if (loadingView != null) loadingView.setVisibility(View.GONE);
+        content.setVisibility(View.VISIBLE);
+        content.removeAllViews();
+
+        // Header
+        LinearLayout header = Ui.row(this);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        TextView title = Ui.text(this, set.displayName, 22, Ui.TEXT, true);
+        header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        
+        String band = report.score.band;
+        TextView bandChip = Ui.chip(this, Ui.bandLabel(band), Ui.bandColor(band));
+        header.addView(bandChip);
+        content.addView(header);
+
+        Ui.addSpace(content, 20);
+
+        // Verdict Card
+        LinearLayout verdict = Ui.card(this);
+        TextView vTitle = Ui.text(this, "Verdict", 14, Ui.MUTED, false);
+        verdict.addView(vTitle);
+        Ui.addSpace(verdict, 8);
+        TextView vMsg = Ui.text(this, Ui.bandLabel(band), 20, Ui.bandColor(band), true);
+        verdict.addView(vMsg);
+        content.addView(verdict);
+
+        Ui.addSpace(content, 20);
+
+        // Findings Card
+        if (!report.findings.isEmpty()) {
+            LinearLayout findings = Ui.card(this);
+            findings.addView(Ui.text(this, "Findings", 14, Ui.MUTED, false));
+            Ui.addSpace(findings, 8);
+            for (Model.Finding f : report.findings) {
+                LinearLayout row = Ui.row(this);
+                TextView sev = Ui.chip(this, f.severity, Ui.severityColor(f.severity));
+                row.addView(sev);
+                Ui.addSpace(row, 8);
+                TextView desc = Ui.text(this, f.title, 14, Ui.TEXT, false);
+                row.addView(desc);
+                findings.addView(row);
+                Ui.addSpace(findings, 6);
+            }
+            content.addView(findings);
+            Ui.addSpace(content, 20);
+        }
+
+        // Actions
+        LinearLayout actions = Ui.column(this);
+        if ("likely_benign".equals(band) || "low".equals(band)) {
+            Button btn = Ui.button(this, "Install", true);
+            btn.setOnClickListener(v -> startInstall());
+            actions.addView(btn);
+        } else if ("suspicious".equals(band)) {
+            Button btn = Ui.button(this, "Install anyway (Own Risk)", true);
+            btn.setOnClickListener(v -> {
+                new AlertDialog.Builder(this)
+                        .setTitle("Suspicious App")
+                        .setMessage("This app has signals that may be dangerous. Do you want to proceed anyway?")
+                        .setPositiveButton("Proceed", (d, w) -> startInstall())
+                        .setNegativeButton("Cancel", null)
+                        .show();
+            });
+            actions.addView(btn);
+        } else {
+            // High / Critical
+            Button btn = Ui.button(this, "Block & Delete", true);
+            btn.setOnClickListener(v -> {
+                InstallSet.cleanup(set);
+                Toast.makeText(this, "File deleted", Toast.LENGTH_SHORT).show();
+                finish();
+            });
+            actions.addView(btn);
+
+            Ui.addSpace(actions, 12);
+            Button override = Ui.button(this, "Override Block (Dangerous)", false);
+            override.setOnClickListener(v -> {
+                new AlertDialog.Builder(this)
+                        .setTitle("Critical Warning")
+                        .setMessage("This app is highly likely to be malicious. Installing it may compromise your device. Are you absolutely sure?")
+                        .setPositiveButton("I accept the risk", (d, w) -> startInstall())
+                        .setNegativeButton("Cancel", null)
+                        .show();
+            });
+            actions.addView(override);
+        }
+        content.addView(actions);
+    }
+
+    private void startInstall() {
+        if (!canInstall()) {
+            requestInstallPermission();
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                PackageInstaller pi = getPackageManager().getPackageInstaller();
+                int sessionId = pi.createSession(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+                PackageInstaller.Session session = pi.openSession(sessionId);
+
+                // Write APKs to session
+                for (File apk : set.apks) {
+                    try (OutputStream os = session.openWrite(apk.getName(), 0)) {
+                        try (FileInputStream is = new FileInputStream(apk)) {
+                            byte[] buffer = new byte[64 * 1024];
+                            int read;
+                            while ((read = is.read(buffer)) > 0) {
+                                os.write(buffer, 0, read);
+                            }
+                        }
+                        os.flush();
+                    }
+                }
+
+                // Result receiver
+                Intent intent = new Intent(this, InstallResultReceiver.class);
+                intent.putExtra(InstallResultReceiver.EXTRA_SESSION_DIR, set.dir);
+                PendingIntent pendingIntent = PackageInstaller.Session.createPendingIntent(
+                        this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+
+                session.commit(pendingIntent.getIntent());
+                session.close();
+
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "Installation started...", Toast.LENGTH_SHORT).show();
+                    finish();
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    showError("Install failed: " + e.getMessage());
+                    finish();
+                });
+            }
+        }, "anbu-install").start();
+    }
+
+    private boolean canInstall() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            return getPackageManager().canRequestPackageInstalls();
+        }
+        return true;
+    }
+
+    private void requestInstallPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+        } else {
+            startInstall(); // Fallback for older APIs
+        }
+    }
+
+    private void showError(String msg) {
+        new AlertDialog.Builder(this)
+                .setTitle("Error")
+                .setMessage(msg)
+                .setPositiveButton("OK", null)
+                .show();
+    }
+}

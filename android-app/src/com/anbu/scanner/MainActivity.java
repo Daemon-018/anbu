@@ -63,6 +63,7 @@ public final class MainActivity extends Activity {
         int cp = Ui.dp(this, 18);
         controls.setPadding(cp, Ui.dp(this, 8), cp, Ui.dp(this, 8));
 
+        LinearLayout topRow = Ui.row(this);
         filter = new EditText(this);
         filter.setHint("Filter installed apps");
         filter.setSingleLine(true);
@@ -78,8 +79,14 @@ public final class MainActivity extends Activity {
                     : filter.getText().toString().trim().toLowerCase(Locale.US);
             renderList();
         }));
-        controls.addView(filter, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        topRow.addView(filter, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        Button openBtn = Ui.button(this, "Open APK...", false);
+        openBtn.setOnClickListener(v -> openApkPicker());
+        topRow.addView(openBtn, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        controls.addView(topRow);
 
         LinearLayout actions = Ui.row(this);
         actions.setPadding(0, Ui.dp(this, 10), 0, 0);
@@ -149,6 +156,28 @@ public final class MainActivity extends Activity {
                 renderList();
             });
         }, "anbu-list").start();
+    }
+
+    private void openApkPicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        String[] mimeTypes = {"application/vnd.android.package-archive", "application/octet-stream", "application/zip"};
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
+        startActivityForResult(intent, InstallActivity.REQ_OPEN_APK);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == InstallActivity.REQ_OPEN_APK && resultCode == RESULT_OK && data != null) {
+            Uri uri = data.getData();
+            if (uri != null) {
+                Intent intent = new Intent(this, InstallActivity.class);
+                intent.putExtra(InstallActivity.EXTRA_APK_URI, uri);
+                startActivity(intent);
+            }
+        }
     }
 
     private void renderList() {

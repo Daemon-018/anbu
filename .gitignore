@@ -29,6 +29,11 @@ build/
 !.env.example
 *.key
 *.pem
+*.jks
+*.keystore
+
+# Local Android SDK downloads and build outputs
+.android-sdk/
 
 # Reports and caches
 reports/

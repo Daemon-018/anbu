@@ -19,9 +19,10 @@ with band and confidence, coverage statement, and a plain-language summary.
 
 **Built today:** safe ingest, extraction, 37 rules and 7 combos, the class ranker and
 slicer, the optional schema-constrained model pass with the evidence gate, the
-deterministic scorer, JSON + HTML reports, the CLI gate, and offline synthetic APK
-fixtures. **Not built yet:** a jadx pass, hash reputation, report chat, and the service
-API.
+deterministic scorer, JSON + HTML reports, the CLI gate, offline synthetic APK fixtures,
+and an on-device Android post-install auditor (`android-app/`) that shares the same
+scoring math. **Not built yet:** a jadx pass, hash reputation, report chat, the service
+API, and the pre-install gatekeeper flow described in doc 05.
 
 ### Must have (48-hour MVP)
 
@@ -53,7 +54,8 @@ API.
 - Trained ML model.
 - Auth, multi-tenancy, billing.
 - PDF export (HTML is enough).
-- Android app (see doc 05; it is phase 3).
+- Pre-install gatekeeper installer (the shipped Android app audits installed apps only;
+  see doc 05).
 - Full native (`.so`) decompilation.
 - Play Store upload.
 
@@ -112,7 +114,8 @@ three can work independently.
 
 ### Phase 3 — only if justified
 - Dynamic sandbox (MobSF or emulator + Frida + mitmproxy) triggered on suspicion.
-- Android thin client (doc 05).
+- Gatekeeper installer, new-app inbox, and background scanning (doc 05; the post-install
+  auditor already ships).
 - Family clustering via embeddings of behaviour summaries.
 - Auto-generated detection rules from findings (reviewed by a human).
 

@@ -92,10 +92,48 @@ anbu scan out/demo.apk --out out/
 
 ---
 
+## On your phone? Yes — as an auditor 📱
+
+There is a small Android app in [`android-app/`](android-app/). It scans apps that are
+**already installed** on the phone: manifest, permissions, exported components, signing
+certificate, and whatever code/asset strings Android lets it read. It runs the same
+scoring math as the CLI (a plain-JDK test checks both against the same vectors), and
+nothing leaves the device.
+
+It is an **auditor, not a gatekeeper**. Android does not let a normal app intercept
+installs made by the Play Store or by other apps, so this cannot scan an app *before* it
+installs. It only helps you find and remove something that is already there.
+
+**What it shows:** every user app, a filter, "Scan all user apps", a per-app score and
+band, a coverage/confidence line, the findings with severity and evidence, and an
+uninstall action. If Android will not give it the app's code, it says so and reports
+metadata only instead of pretending it saw everything.
+
+**What it does not do (yet):** new-app notifications, package-diff inbox, scan history,
+background scanning, or a pre-install installer flow. Those are described as future work
+in [`docs/05`](docs/05-on-device-app-feasibility.md).
+
+**Build it** (no Gradle required — it uses the Android build tools directly):
+
+```bash
+cd android-app
+./build.sh                 # runs the score-parity test, then builds/signs the APK
+./out/anbu-scanner.apk     # install with: adb install -r out/anbu-scanner.apk
+```
+
+You need `aapt2`, `javac`, `d8`, `zipalign`, and `apksigner` (or an Android SDK that
+provides them); `build.sh` looks in the usual SDK locations. `SKIP_TESTS=1 ./build.sh`
+skips the parity check. The app targets Android 7.0+ (API 24) and asks for no
+internet permission.
+
+Only scan apps you own or have permission to inspect.
+
+---
+
 ## What ANBU is not 🙅
 
-* **It is not an app on your phone.** ANBU is a command-line tool that runs on a
-  computer. (An on-device version is only a design idea for now — see `docs/05`.)
+* **It is not a Play Store gatekeeper.** The Android app audits installed apps after the
+  fact; it cannot block or scan installs that the Play Store or another app performs.
 * **It does not run the APK.** Nothing inside it gets executed. Ever.
 * **It cannot see everything.** Code fetched from the internet later, or hidden inside
   native `.so` files, stays invisible. "No bad signals" ≠ "safe".
@@ -155,7 +193,16 @@ The suite covers the rule pack, ranking, the evidence gate, scoring, report esca
 real benign APK when one is present, and a synthetic malicious APK built offline.
 
 Deeper documents live in [`docs/`](docs/): approaches, risk scoring, roadmap, safety and
-legal notes, the on-device idea, and an auditor screen spec.
+legal notes, the on-device app and its limits, and an auditor screen spec.
+
+The Android app is plain Java with no Gradle and no third-party libraries:
+
+| Part | File | Job |
+|---|---|---|
+| UI | `android-app/src/com/anbu/scanner/*Activity.java` | app list, scan queue, result, detail |
+| Engine | `android-app/src/com/anbu/scanner/ScanEngine.java` | reads packages and extracts facts |
+| Score | `android-app/src/com/anbu/scanner/ScoreMath.java` | pure-Java port of `score.py` |
+| Parity test | `android-app/test/` | compiles `ScoreMath` with a plain JDK and checks it against vectors generated from the Python scorer |
 
 ---
 

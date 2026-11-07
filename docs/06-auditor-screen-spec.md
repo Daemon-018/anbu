@@ -12,6 +12,29 @@ evidence contract in the same document.
 
 ---
 
+## 0. Implementation status
+
+The shipped app (`android-app/`) implements the **manual audit** path. It does not yet
+implement automatic detection, the inbox, or history. Where this spec and the table
+below disagree, the table describes the current build.
+
+| Spec area | Status |
+|---|---|
+| A1 notification, A2 inbox, package-list diff | **Future.** Not built. |
+| A3 first-scan disclosure | **Built**, without the cloud toggle (the app has no cloud checks and no network permission). |
+| A4 scan progress | **Built** for single and batch scans, with cancel; there is no reputation stage. |
+| A5–A9 result screens | **Built as one result screen** whose header, band, coverage, and findings change with the result; there is no separate verified-hash screen. |
+| A10 findings list, A11 detail | **Built** (list on the result screen; detail activity with evidence and copy). |
+| A12 uninstall handoff, A13 post-uninstall | **Built**, including device-admin awareness and return handling. |
+| A14 history / ignored apps | **Future.** Not built; reports do not persist across process death. |
+| A15 error / interrupted | **Partially built**: scan failure, unreadable code, and app-removed states exist; timeout recovery is limited to retry. |
+
+Also not built: settings, background/`WorkManager` scanning, per-version ignore, and the
+cloud-check toggle. Several UI strings are inline in Java rather than in resources, so the
+localisation rule in section 12 is not yet met. The sections below remain the target spec.
+
+---
+
 ## 1. Principles
 
 1. **Never scan without consent.** Detection may be automatic; scanning is always a user
@@ -67,7 +90,7 @@ inconclusive, never "clean".
 
 ---
 
-## 3. Detection prompt
+## 3. Detection prompt (future — not in the current app)
 
 ### 3.1 Where it appears
 
@@ -137,6 +160,10 @@ Wireframe:
 ---
 
 ## 4. First-scan disclosure (A3)
+
+Status: **built** as a one-time dialog before the first scan. The shipped dialog omits
+the cloud-check toggle and the "Learn more" link because the app has no cloud checks; the
+rest of the copy and the "details only" caveat are implemented.
 
 Shown once per install of ANBU, before the first scan. A notification action counts
 as consent for that app, but the disclosure is still shown the first time.
@@ -422,7 +449,7 @@ On return, check whether the package still resolves:
 
 ---
 
-## 9. History and ignored apps (A14)
+## 9. History and ignored apps (A14 — future, not built)
 
 - Grouped by date; each row: icon, label, band chip, scan mode, timestamp, status
   (`Scanned`, `Ignored`, `Uninstalled`, `Interrupted`).
@@ -495,6 +522,9 @@ never concatenated in code.
 ---
 
 ## 13. Acceptance criteria
+
+Target criteria for the full spec. Section 0 lists what the current build satisfies;
+notification, inbox, ignore, and history items are not met yet.
 
 - [ ] No scan starts without an explicit user action.
 - [ ] Notification tap → scan starts in one tap; first-run disclosure appears once.

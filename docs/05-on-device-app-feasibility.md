@@ -18,6 +18,41 @@ permissions, policies, and limits.
 
 ---
 
+## 0. What is built today
+
+The repo already contains a working **post-install auditor** in
+[`android-app/`](../android-app/), built without Gradle. It is the manual-dashboard
+shape from [section 3.3](#33-manual-audit-dashboard), not the gatekeeper installer.
+
+**Implemented**
+
+- Lists installed user apps (system apps optional) with a filter.
+- Scans on demand, queued one at a time, with progress and cancel.
+- Reads package metadata, requested permissions, exported components, the signing
+  certificate, and best-effort DEX/asset strings from the installed APK.
+- Scores with the same deterministic math as the CLI (a plain-JDK parity test checks
+  `ScoreMath` against vectors generated from `anbu.score`), including bands, confidence,
+  coverage, and the inconclusive state.
+- Shows findings with severity, description, and quoted evidence; batch "Scan all user
+  apps" gives a summary.
+- Uninstall hand-off, including device-admin awareness and the post-uninstall state.
+- Requests no `INTERNET` permission. Nothing is uploaded; cloud checks do not exist in
+  the app.
+
+**Not implemented yet (design only, later sections)**
+
+- Gatekeeper installer (`ACTION_VIEW` / `ACTION_SEND` / `PackageInstaller`).
+- New-app notification, package-list-diff inbox, or `WorkManager` background checks.
+- First-scan settings / cloud toggle, scan history, per-version ignore.
+- Verified-hash badge, report persistence across process death.
+- Any on-device LLM, dynamic analysis, or native `.so` analysis.
+
+Build with `android-app/build.sh`; run the scoring parity test with
+`android-app/test/run.sh`. The app targets API 24+ and uses `QUERY_ALL_PACKAGES` to
+enumerate packages, which is a restricted permission for Play distribution (section 4).
+
+---
+
 ## 1. Verdict matrix
 
 | Proposed capability | Possible? | Reality |
@@ -298,10 +333,13 @@ request SMS/contacts/accessibility for a scanner.
 
 Realistic value proposition for the Indian market (where APK scams arrive over WhatsApp):
 
-- **"Check before you install"** for any APK the user opens or shares — the core use case.
-- **"What is this app doing?"** explained in plain language with evidence.
-- **"Audit my phone"** for stalkerware/spyware, user-initiated.
-- **"Warn me about new apps"** on next open or via a periodic check, then scan on consent.
+- **"Audit my phone"** for stalkerware/spyware, user-initiated — **this is what the
+  shipped app does today.**
+- **"What is this app doing?"** explained in plain language with evidence — **shipped.**
+- **"Check before you install"** for any APK the user opens or shares — future installer
+  flow, not in the current app.
+- **"Warn me about new apps"** on next open or via a periodic check, then scan on consent
+  — future detection/inbox work.
 
 What it cannot promise:
 
@@ -327,9 +365,12 @@ Wording matters: "No known malicious signals" + coverage + confidence, never "Sa
 | Play policy review / declarations | uncertain | The schedule risk is approval, not code |
 | On-device LLM | 2–4 weeks | Often not worth it vs backend |
 
-**This dev machine cannot build it as-is:** no JDK, no Android SDK, no emulator, no KVM
-assumed. You need Android Studio locally or a CI runner (GitHub Actions with the Android
-SDK) to compile and test. The Python analysis core can be developed here.
+**This dev machine cannot run it:** there is no emulator, no `/dev/kvm`, and no `adb`
+here, so the APK cannot be installed or exercised. The build itself is reproducible
+without Gradle: `android-app/build.sh` drives `aapt2`, `javac`, `d8`, `zipalign`, and
+`apksigner` directly and runs the score-parity test first. Use a real phone or an
+emulator elsewhere for runtime testing; use Android Studio or a CI runner if you want
+Gradle tooling.
 
 A hackathon demo is feasible in 2–3 days if the scope is: file picker → upload/hash →
 backend score → report screen. Skip the installer role and the on-device DEX parser for
@@ -338,6 +379,10 @@ the demo; show them as roadmap.
 ---
 
 ## 7. Recommended product shape
+
+The repo already ships the first half of this shape: the analysis core plus a manual
+post-install auditor. The gatekeeper installer below is the next product step, not a
+prerequisite.
 
 1. **Ship the analysis core as a service** (docs 01–03). It is the hard part and is
    reusable by CLI, web, and mobile.
